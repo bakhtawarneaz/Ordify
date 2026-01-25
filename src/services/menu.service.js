@@ -1,4 +1,5 @@
 const Menu = require('../models/menu.model');
+const UserMenuPermission = require('../models/userMenuPermission.model');
 
 exports.createMenu = async (payload) => {
   const { name, key, route, icon, parent_id, order_no, is_active } = payload;
@@ -67,5 +68,42 @@ exports.getAllMenus = async () => {
     ],
   });
 
+  return { success: true, data: menus };
+};
+
+exports.getMyMenus = async (user) => {
+
+  if (user.role_id === 3) {
+    const menus = await Menu.findAll({
+      where: { is_active: true, parent_id: null },
+      order: [['order_no', 'ASC']],
+      include: [{
+        model: Menu,
+        as: 'children',
+        where: { is_active: true },
+        required: false,
+        order: [['order_no', 'ASC']],
+      }],
+    });
+    return { success: true, data: menus };
+  }
+
+  const permissions = await UserMenuPermission.findAll({
+    where: { user_id: user.id, can_view: true },
+    include: [{ model: Menu }],
+  });
+
+  const menuIds = permissions.map(p => p.menu_id);
+  const menus = await Menu.findAll({
+    where: { id: menuIds, is_active: true, parent_id: null },
+    order: [['order_no', 'ASC']],
+    include: [{
+    model: Menu,
+    as: 'children',
+    where: { is_active: true },
+    required: false,
+    order: [['order_no', 'ASC']],
+    }],
+  });
   return { success: true, data: menus };
 };

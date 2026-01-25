@@ -7,7 +7,6 @@ const canAccess = (action, menuKey) => {
     try {
       const { id: user_id, role } = req.user;
 
-      // 🔥 Super Admin = full access
       if (role === 'super_admin') {
         return;
       }
@@ -48,7 +47,7 @@ const canAccess = (action, menuKey) => {
         });
       }
 
-      return; // ✅ allow
+      return;
     } catch (err) {
       return reply.code(500).send({
         success: false,

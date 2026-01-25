@@ -44,3 +44,12 @@ exports.getAll = async (req, reply) => {
     return reply.code(500).send({ success: false, message: err.message });
   }
 };
+
+exports.myMenus = async (req, reply) => {
+  try {
+    const res = await menuService.getMyMenus(req.user);  
+    return reply.code(200).send(res);
+  } catch (err) {
+    return reply.code(500).send({ success: false, message: err.message });
+  }
+};
