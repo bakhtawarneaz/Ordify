@@ -1,18 +1,15 @@
-const RoleMenuPermission = require('../models/roleMenuPermission.model');
+const UserMenuPermission = require('../models/userMenuPermission.model');
 const Menu = require('../models/menu.model');
 
-/**
- * Generic permission checker
- * @param {'view'|'create'|'edit'|'delete'} action
- * @param {string} menuKey
- */
+
 const canAccess = (action, menuKey) => {
   return async (req, reply) => {
     try {
-      // authMiddleware ne req.user set kar diya hota hai
-      const { role_id } = req.user;
-      if (!role_id) {
-        return reply.code(401).send({ success: false, message: 'Unauthorized' });
+      const { id: user_id, role } = req.user;
+
+      // 🔥 Super Admin = full access
+      if (role === 'super_admin') {
+        return;
       }
 
       const menu = await Menu.findOne({
@@ -22,21 +19,18 @@ const canAccess = (action, menuKey) => {
       if (!menu) {
         return reply.code(403).send({
           success: false,
-          message: 'Menu not found or inactive',
+          message: 'Menu not available',
         });
       }
 
-      const permission = await RoleMenuPermission.findOne({
-        where: {
-          role_id,
-          menu_id: menu.id,
-        },
+      const permission = await UserMenuPermission.findOne({
+        where: { user_id, menu_id: menu.id },
       });
 
       if (!permission) {
         return reply.code(403).send({
           success: false,
-          message: 'Access denied',
+          message: 'Permission not assigned',
         });
       }
 
@@ -47,15 +41,14 @@ const canAccess = (action, menuKey) => {
         delete: 'can_delete',
       };
 
-      const field = map[action];
-      if (!permission[field]) {
+      if (!permission[map[action]]) {
         return reply.code(403).send({
           success: false,
-          message: `You do not have ${action} permission`,
+          message: `No ${action} permission`,
         });
       }
 
-      return; // ✅ Fastify flow continue
+      return; // ✅ allow
     } catch (err) {
       return reply.code(500).send({
         success: false,
@@ -65,7 +58,6 @@ const canAccess = (action, menuKey) => {
   };
 };
 
-// Sugar helpers (clean routes)
 exports.canView = (menuKey) => canAccess('view', menuKey);
 exports.canCreate = (menuKey) => canAccess('create', menuKey);
 exports.canEdit = (menuKey) => canAccess('edit', menuKey);

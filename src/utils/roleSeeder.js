@@ -2,7 +2,7 @@ const Role = require('../models/role.model');
 
 async function seedRoles() {
   try {
-    const defaultRoles = ['admin', 'client'];
+    const defaultRoles = ['super_admin','admin', 'client'];
 
     for (const roleName of defaultRoles) {
       const existing = await Role.findOne({ where: { name: roleName } });

@@ -18,10 +18,10 @@ exports.update = async (req, reply) => {
   }
 };
 
-exports.remove = async (req, reply) => {
+exports.toggleStatus = async (req, reply) => {
   try {
-    const res = await menuService.deleteMenu(req.params.id);
-    return reply.code(res.success ? 200 : 400).send(res);
+    const res = await menuService.toggleMenuStatus(req.body);
+    return reply.code(res.success ? 200 : 404).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
   }

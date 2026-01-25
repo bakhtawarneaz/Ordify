@@ -7,12 +7,12 @@ const { seedRoles } = require('./utils/roleSeeder');
 // Import Routes
 const authRoutes = require('./routes/auth.routes');
 const menuRoutes = require('./routes/menu.routes');
-const permissionRoutes = require('./routes/permission.routes'); 
+const userPermissionRoutes = require('./routes/userPermission.routes');
 
 fastify.register(cors, { origin: '*' });
 fastify.register(authRoutes, { prefix: '/api/auth' });
 fastify.register(menuRoutes, { prefix: '/api/menu' });
-fastify.register(permissionRoutes, { prefix: '/api/permission' });
+fastify.register(userPermissionRoutes, { prefix: '/api/permission' });
 
 // DB Connection
 sequelize.sync({ alter: true })

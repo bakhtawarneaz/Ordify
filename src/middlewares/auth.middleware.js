@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 
-exports.verifyToken = async (req, reply) => {
+exports.authMiddleware = async (req, reply) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {

@@ -1,10 +1,10 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const Role = require('./role.model');
+const User = require('./user.model');
 const Menu = require('./menu.model');
 
-const RoleMenuPermission = sequelize.define(
-  'RoleMenuPermission',
+const UserMenuPermission = sequelize.define(
+  'UserMenuPermission',
   {
     id: {
       type: DataTypes.INTEGER,
@@ -12,7 +12,7 @@ const RoleMenuPermission = sequelize.define(
       primaryKey: true,
     },
 
-    role_id: {
+    user_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
@@ -43,25 +43,18 @@ const RoleMenuPermission = sequelize.define(
     },
   },
   {
-    tableName: 'role_menu_permissions',
+    tableName: 'user_menu_permissions',
     timestamps: true,
     indexes: [
       {
         unique: true,
-        fields: ['role_id', 'menu_id'], // ek role ko ek menu ki sirf ek entry
+        fields: ['user_id', 'menu_id'],
       },
     ],
   }
 );
 
-RoleMenuPermission.belongsTo(Role, {
-  foreignKey: 'role_id',
-  as: 'role',
-});
+UserMenuPermission.belongsTo(User, { foreignKey: 'user_id' });
+UserMenuPermission.belongsTo(Menu, { foreignKey: 'menu_id' });
 
-RoleMenuPermission.belongsTo(Menu, {
-  foreignKey: 'menu_id',
-  as: 'menu',
-});
-
-module.exports = RoleMenuPermission;
+module.exports = UserMenuPermission;

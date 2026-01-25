@@ -31,15 +31,16 @@ exports.updateMenu = async (id, payload) => {
   return { success: true, message: 'Menu updated successfully', data: menu };
 };
 
-exports.deleteMenu = async (id) => {
+exports.toggleMenuStatus = async ({ id, is_active }) => {
   const menu = await Menu.findByPk(id);
   if (!menu) {
     return { success: false, message: 'Menu not found' };
   }
-
-  // soft delete
-  await menu.update({ is_active: false });
-  return { success: true, message: 'Menu disabled successfully' };
+  await menu.update({ is_active });
+  return {
+    success: true,
+    message: is_active ? 'Menu enabled successfully' : 'Menu disabled successfully',
+  };
 };
 
 exports.getMenuById = async (id) => {
