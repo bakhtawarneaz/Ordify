@@ -8,11 +8,13 @@ const { seedRoles } = require('./utils/roleSeeder');
 const authRoutes = require('./routes/auth.routes');
 const menuRoutes = require('./routes/menu.routes');
 const userPermissionRoutes = require('./routes/userPermission.routes');
+const chatbotFlowRoutes = require('./routes/chatbotFlow.routes');
 
 fastify.register(cors, { origin: '*' });
 fastify.register(authRoutes, { prefix: '/api/auth' });
 fastify.register(menuRoutes, { prefix: '/api/menu' });
 fastify.register(userPermissionRoutes, { prefix: '/api/permission' });
+fastify.register(chatbotFlowRoutes, { prefix: '/api/chatbotFlow' });
 
 // DB Connection
 sequelize.sync({ alter: true })
