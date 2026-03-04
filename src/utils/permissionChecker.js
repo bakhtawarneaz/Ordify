@@ -5,9 +5,9 @@ const Menu = require('../models/menu.model');
 const canAccess = (action, menuKey) => {
   return async (req, reply) => {
     try {
-      const { id: user_id, role } = req.user;
+      const { id: user_id, role_id } = req.user;
 
-      if (role === 'super_admin') {
+      if (role_id === 1) {
         return;
       }
 

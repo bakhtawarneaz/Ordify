@@ -1,4 +1,5 @@
 const Menu = require('../models/menu.model');
+const Role = require('../models/role.model');
 const UserMenuPermission = require('../models/userMenuPermission.model');
 
 exports.createMenu = async (payload) => {
@@ -72,8 +73,8 @@ exports.getAllMenus = async () => {
 };
 
 exports.getMyMenus = async (user) => {
-
-  if (user.role_id === 3) {
+  const role = await Role.findByPk(user.role_id);
+  if (role.name === 'super_admin') {
     const menus = await Menu.findAll({
       where: { is_active: true, parent_id: null },
       order: [['order_no', 'ASC']],
@@ -98,11 +99,11 @@ exports.getMyMenus = async (user) => {
     where: { id: menuIds, is_active: true, parent_id: null },
     order: [['order_no', 'ASC']],
     include: [{
-    model: Menu,
-    as: 'children',
-    where: { is_active: true },
-    required: false,
-    order: [['order_no', 'ASC']],
+      model: Menu,
+      as: 'children',
+      where: { is_active: true },
+      required: false,
+      order: [['order_no', 'ASC']],
     }],
   });
   return { success: true, data: menus };
