@@ -35,6 +35,17 @@ exports.add = async (payload) => {
   return { success: true, message: 'Store added' };
 };
 
+
+// Service function to get all stores
+exports.getAllStores = async () => {
+  try {
+      const stores = await storeModel.findAll(); // Sequelize/ORM or DB query
+      return { success: true, data: stores };
+  } catch (err) {
+      return { success: false, message: err.message };
+  }
+};
+
 // exports.getByUser = async (user_id) => {
 //   const data = await UserMenuPermission.findAll({ where: { user_id } });
 //   return { success: true, data };
