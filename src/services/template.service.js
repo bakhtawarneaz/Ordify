@@ -101,18 +101,3 @@ exports.getAllTemplates = async (query) => {
 
   return { success: true, data: templates };
 };
-
-exports.getTemplatesByStore = async (store_id, template_type) => {
-  const where = { store_id };
-
-  if (template_type) {
-    where.template_type = template_type;
-  }
-
-  const templates = await Template.findAll({
-    where,
-    order: [['id', 'ASC']],
-  });
-
-  return { success: true, data: templates };
-};

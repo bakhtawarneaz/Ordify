@@ -1,52 +1,93 @@
-const storeModel = require('../models/store.model');
+const Store = require('../models/store.model');
 
-exports.add = async (payload) => {
-  const { store_id,  store_name , sender, access_token, api_key, whatsapp_only, voice_only, ordify_only, brand_name, judgeme_api_token, voice_unanswered, feedback_delay, voice_unanswered_whatsapp,post_paid, pre_paid } = payload;
+exports.createStore = async (payload) => {
+  const { store_id, store_name } = payload;
 
-  const existing = await storeModel.findOne({
-    where: { store_id  },
-  });
-
-  if (existing) {
-    await existing.update({ store_id,  store_name, sender, access_token, api_key, whatsapp_only,  voice_only, ordify_only, brand_name, judgeme_api_token, voice_unanswered, feedback_delay, voice_unanswered_whatsapp, post_paid, pre_paid  });
-    return { success: true, message: 'Store updated' };
+  if (!store_id || !store_name) {
+    return { success: false, message: 'store_id and store_name are required' };
   }
 
-  await storeModel.create({
+  const exists = await Store.findOne({ where: { store_id } });
+  if (exists) {
+    return { success: false, message: 'Store with this store_id already exists' };
+  }
+
+  const store = await Store.create({
     store_id,
+    store_url: payload.store_url || null,
     store_name,
-    sender,
-    access_token,
-    api_key,
-    whatsapp_only,
-    voice_only, 
-    ordify_only,
-    brand_name,
-    judgeme_api_token,
-    voice_unanswered,
-    feedback_delay,
-    voice_unanswered_whatsapp,
-    post_paid,
-    pre_paid
-
-    
+    sender: payload.sender || null,
+    access_token: payload.access_token || null,
+    api_key: payload.api_key || null,
+    status: payload.status !== undefined ? payload.status : true,
+    whatsapp_only: payload.whatsapp_only || false,
+    voice_only: payload.voice_only || false,
+    ordify_only: payload.ordify_only || false,
+    brand_name: payload.brand_name || null,
+    post_paid: payload.post_paid || false,
+    pre_paid: payload.pre_paid || false,
+    judgeme_api_token: payload.judgeme_api_token || null,
+    feedback_delay: payload.feedback_delay || null,
+    voice_unanswered_whatsapp: payload.voice_unanswered_whatsapp || false,
+    voice_unanswered: payload.voice_unanswered || false,
+    campaign_id: payload.campaign_id || null,
   });
 
-  return { success: true, message: 'Store added' };
+  return { success: true, message: 'Store created successfully', data: store };
 };
 
-
-// Service function to get all stores
-exports.getAllStores = async () => {
-  try {
-      const stores = await storeModel.findAll(); // Sequelize/ORM or DB query
-      return { success: true, data: stores };
-  } catch (err) {
-      return { success: false, message: err.message };
+exports.updateStore = async (id, payload) => {
+  const store = await Store.findByPk(id);
+  if (!store) {
+    return { success: false, message: 'Store not found' };
   }
+
+  await store.update(payload);
+  return { success: true, message: 'Store updated successfully', data: store };
 };
 
-// exports.getByUser = async (user_id) => {
-//   const data = await UserMenuPermission.findAll({ where: { user_id } });
-//   return { success: true, data };
-// };
+exports.deleteStore = async (id) => {
+  const store = await Store.findByPk(id);
+  if (!store) {
+    return { success: false, message: 'Store not found' };
+  }
+
+  await store.destroy();
+  return { success: true, message: 'Store deleted successfully' };
+};
+
+exports.getStoreById = async (id) => {
+  const store = await Store.findByPk(id);
+  if (!store) {
+    return { success: false, message: 'Store not found' };
+  }
+
+  return { success: true, data: store };
+};
+
+exports.getAllStores = async (query) => {
+  const where = {};
+
+  if (query.status !== undefined) {
+    where.status = query.status;
+  }
+
+  if (query.whatsapp_only !== undefined) {
+    where.whatsapp_only = query.whatsapp_only;
+  }
+
+  if (query.voice_only !== undefined) {
+    where.voice_only = query.voice_only;
+  }
+
+  if (query.ordify_only !== undefined) {
+    where.ordify_only = query.ordify_only;
+  }
+
+  const stores = await Store.findAll({
+    where,
+    order: [['id', 'ASC']],
+  });
+
+  return { success: true, data: stores };
+};
