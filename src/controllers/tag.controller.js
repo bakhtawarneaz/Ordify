@@ -1,8 +1,8 @@
-const templateService = require('../services/template.service');
+const tagService = require('../services/tag.service');
 
 exports.create = async (req, reply) => {
   try {
-    const res = await templateService.createTemplate(req.body);
+    const res = await tagService.createTag(req.body);
     return reply.code(res.success ? 200 : 400).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
@@ -11,7 +11,7 @@ exports.create = async (req, reply) => {
 
 exports.update = async (req, reply) => {
   try {
-    const res = await templateService.updateTemplate(req.params.id, req.body);
+    const res = await tagService.updateTag(req.params.id, req.body);
     return reply.code(res.success ? 200 : 400).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
@@ -20,7 +20,7 @@ exports.update = async (req, reply) => {
 
 exports.delete = async (req, reply) => {
   try {
-    const res = await templateService.deleteTemplate(req.params.id);
+    const res = await tagService.deleteTag(req.params.id);
     return reply.code(res.success ? 200 : 404).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
@@ -29,7 +29,7 @@ exports.delete = async (req, reply) => {
 
 exports.getOne = async (req, reply) => {
   try {
-    const res = await templateService.getTemplateById(req.params.id);
+    const res = await tagService.getTagById(req.params.id);
     return reply.code(res.success ? 200 : 404).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
@@ -37,10 +37,10 @@ exports.getOne = async (req, reply) => {
 };
 
 exports.getAll = async (req, reply) => {
-  try {
-    const res = await templateService.getAllTemplates(req.query);
-    return reply.code(200).send(res);
-  } catch (err) {
-    return reply.code(500).send({ success: false, message: err.message });
-  }
-};
+    try {
+      const res = await tagService.getAllTags(req.query.store_id);
+      return reply.code(200).send(res);
+    } catch (err) {
+      return reply.code(500).send({ success: false, message: err.message });
+    }
+  };

@@ -8,7 +8,6 @@ async function templateRoutes(fastify) {
   fastify.delete('/delete/:id', { preHandler: [authMiddleware, canDelete('template')] }, templateController.delete);
   fastify.get('/get/:id', { preHandler: authMiddleware }, templateController.getOne);
   fastify.get('/all', { preHandler: [authMiddleware, canView('template')] }, templateController.getAll);
-  fastify.get('/store/:store_id', { preHandler: authMiddleware }, templateController.getByStore);
 }
 
 module.exports = templateRoutes;
