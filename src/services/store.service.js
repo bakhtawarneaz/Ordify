@@ -46,7 +46,7 @@ exports.getAllStores = async () => {
   }
 };
 
-// exports.getByUser = async (user_id) => {
-//   const data = await UserMenuPermission.findAll({ where: { user_id } });
-//   return { success: true, data };
-// };
+exports.getById = async (id) => {
+  const data = await storeModel.findAll({ where: { id } });
+  return { success: true, data };
+};

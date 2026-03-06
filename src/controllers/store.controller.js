@@ -23,10 +23,10 @@ exports.allStores = async (req, reply) => {
 };
 
 
-exports.byUser = async (req, reply) => {
+exports.byId = async (req, reply) => {
   try {
-      const { user_id } = req.params;
-      const res = await service.getByUser(user_id);
+      const { id } = req.params;
+      const res = await service.getById(id);
       return reply.code(res.success ? 200 : 400).send(res);
   } catch (err) {
       return reply.code(500).send({ success: false, message: err.message });
