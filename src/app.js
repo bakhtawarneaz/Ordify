@@ -24,7 +24,7 @@ fastify.register(tagRoutes, { prefix: '/api/tag' });
 sequelize.sync({ alter: true })
 .then(async () => {
   console.log('✅ Database connected & synced');
-  await seedRoles();
+  await seedRoles(); 
 })
 .catch(err => console.error('❌ DB Error:', err));
 
