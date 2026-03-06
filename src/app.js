@@ -10,6 +10,7 @@ const menuRoutes = require('./routes/menu.routes');
 const userPermissionRoutes = require('./routes/userPermission.routes');
 const templateRoutes = require('./routes/template.routes');
 const storeRoutes = require('./routes/store.routes');
+const tagRoutes = require('./routes/tag.routes');
 
 fastify.register(cors, { origin: '*' });
 fastify.register(authRoutes, { prefix: '/api/auth' });
@@ -17,7 +18,7 @@ fastify.register(menuRoutes, { prefix: '/api/menu' });
 fastify.register(userPermissionRoutes, { prefix: '/api/permission' });
 fastify.register(templateRoutes, { prefix: '/api/template' });
 fastify.register(storeRoutes, { prefix: '/api/store' });
-
+fastify.register(tagRoutes, { prefix: '/api/tag' });
 
 // DB Connection
 sequelize.sync({ alter: true })
