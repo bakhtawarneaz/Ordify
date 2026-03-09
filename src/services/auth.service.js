@@ -14,13 +14,18 @@ exports.register = async ({ name, email, password, role_id, number, image }) => 
     return { success: false, message: 'Invalid role' };
   }
 
+  const clientRole = await Role.findOne({ where: { name: 'client' } });
+  if (!clientRole) {
+    return { success: false, message: 'Client role not found' };
+  }
+
   const hashedPassword = await hashPassword(password);
 
   const user = await User.create({
     name,
     email,
     password: hashedPassword,
-    role_id,
+    role_id: clientRole.id,
     number,
     image,
   });

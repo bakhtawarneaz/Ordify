@@ -9,7 +9,7 @@ const User = sequelize.define('User', {
   password: { type: DataTypes.STRING, allowNull: false },
   number: { type: DataTypes.STRING, allowNull: true,},
   image: { type: DataTypes.STRING, allowNull: true, },
-  role_id: { type: DataTypes.INTEGER, allowNull: false },
+  role_id: { type: DataTypes.INTEGER, allowNull: false }, 
   is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
 }, {
   tableName: 'users',
