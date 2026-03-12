@@ -1,8 +1,7 @@
-// server.js
 const app = require('./app');
 require('dotenv').config();
 
-const PORT = process.env.PORT || 8080; // fallback to 8080
+const PORT = process.env.PORT || 8080; 
 
 const start = async () => {
   try {

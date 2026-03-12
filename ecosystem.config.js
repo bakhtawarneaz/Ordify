@@ -3,11 +3,18 @@ module.exports = {
       {
         name: "notify",
         script: "./src/server.js",
-        env: {
-          PORT: 8080,           // Node internal port
-          NODE_ENV: "production"
+        instances: 1,
+        autorestart: true,
+        watch: false,
+        env_local: {
+          NODE_ENV: "local"
         },
-        watch: false
+        env_development: {
+            NODE_ENV: "development"
+        },
+        env_production: {
+          NODE_ENV: "production"
+        }
       }
     ]
   };

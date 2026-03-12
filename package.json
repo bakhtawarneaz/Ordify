@@ -1,10 +1,19 @@
 {
-  "name": "ordify",
+  "name": "notify",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "pm2:local": "pm2 start ecosystem.config.js --env local",
+    "pm2:dev": "pm2 start ecosystem.config.js --env development",
+    "pm2:prod": "pm2 start ecosystem.config.js --env production",
+    "pm2:logs": "pm2 logs notify",
+    "pm2:restart": "pm2 restart notify",
+    "pm2:stop": "pm2 stop notify",
+    "pm2:delete": "pm2 delete notify",
+    "pm2:save": "pm2 save"
   },
   "keywords": [],
   "author": "",
