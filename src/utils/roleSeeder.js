@@ -1,21 +1,21 @@
-const Role = require('../models/role.model');
+// const Role = require('../models/role.model');
 
-async function seedRoles() {
-  try {
-    const defaultRoles = ['super_admin','admin', 'client'];
+// async function seedRoles() {
+//   try {
+//     const defaultRoles = ['super_admin','admin', 'client'];
 
-    for (const roleName of defaultRoles) {
-      const existing = await Role.findOne({ where: { name: roleName } });
-      if (!existing) {
-        await Role.create({ name: roleName });
-        console.log(`✅ Role "${roleName}" created`);
-      }
-    }
+//     for (const roleName of defaultRoles) {
+//       const existing = await Role.findOne({ where: { name: roleName } });
+//       if (!existing) {
+//         await Role.create({ name: roleName });
+//         console.log(`✅ Role "${roleName}" created`);
+//       }
+//     }
 
-    console.log('✅ Role seeding completed');
-  } catch (error) {
-    console.error('❌ Role seeding failed:', error);
-  }
-}
+//     console.log('✅ Role seeding completed');
+//   } catch (error) {
+//     console.error('❌ Role seeding failed:', error);
+//   }
+// }
 
-module.exports = { seedRoles };
+// module.exports = { seedRoles };
