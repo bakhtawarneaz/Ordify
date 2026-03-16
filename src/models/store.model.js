@@ -11,7 +11,7 @@ const Store = sequelize.define(
     },
 
     store_id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING,
       allowNull: false,
       unique: true,
     },

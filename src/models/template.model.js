@@ -83,6 +83,12 @@ const Template = sequelize.define(
       defaultValue: false,
       comment: 'Optional - present in some templates',
     },
+    payment_type: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      defaultValue: 'both',
+      comment: 'post_paid, pre_paid, or both',
+    },
   },
   {
     tableName: 'templates',
