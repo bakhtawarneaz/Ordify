@@ -20,7 +20,7 @@ exports.retrySingle = async (req, reply) => {
 
 exports.retryBulk = async (req, reply) => {
   try {
-    const res = await messageLogService.retryBulk(req.query);
+    const res = await messageLogService.retryBulk(req.body || {}, req.query);
     return reply.code(200).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });

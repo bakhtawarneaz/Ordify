@@ -6,7 +6,6 @@ const Template = require('../models/template.model');
 const WhatsAppMessageResponse = require('../models/whatsappMessageResponse.model');
 const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
 
-// ========== CREATE LOG ==========
 
 exports.createLog = async ({ store_id, order_id, template_id, phone_number, status, error_message }) => {
   const log = await MessageLog.create({
@@ -22,8 +21,6 @@ exports.createLog = async ({ store_id, order_id, template_id, phone_number, stat
   return log;
 };
 
-
-// ========== GET ALL LOGS ==========
 
 exports.getAllLogs = async (query) => {
   const where = {};
@@ -54,7 +51,6 @@ exports.getAllLogs = async (query) => {
   return { success: true, data: logs };
 };
 
-// ========== SINGLE RETRY ==========
 
 exports.retrySingle = async (logId) => {
   const log = await MessageLog.findByPk(logId);
@@ -71,7 +67,6 @@ exports.retrySingle = async (logId) => {
     return { success: false, message: 'Max retries reached' };
   }
 
-  // Find store, order, template
   const store = await Store.findOne({ where: { id: log.store_id } });
   if (!store) {
     return { success: false, message: 'Store not found' };
@@ -137,34 +132,37 @@ exports.retrySingle = async (logId) => {
   }
 };
 
-// ========== BULK RETRY ==========
-
-exports.retryBulk = async (query) => {
+exports.retryBulk = async (body, query) => {
   const where = {
     status: 'failed',
-    retry_count: { [Op.lt]: sequelize.col('max_retries') },
   };
-
-  if (query.store_id) {
-    where.store_id = query.store_id;
+ 
+  if (body.log_ids && Array.isArray(body.log_ids) && body.log_ids.length > 0) {
+    where.id = { [Op.in]: body.log_ids };
+  } else {
+    if (query.store_id) {
+      where.store_id = query.store_id;
+    }
   }
-
+ 
   const failedLogs = await MessageLog.findAll({ where });
-
-  if (failedLogs.length === 0) {
+ 
+  const retryableLogs = failedLogs.filter(log => log.retry_count < log.max_retries);
+ 
+  if (retryableLogs.length === 0) {
     return { success: true, message: 'No failed messages to retry', data: [] };
   }
-
+ 
   const results = [];
-
-  for (const log of failedLogs) {
+ 
+  for (const log of retryableLogs) {
     const result = await exports.retrySingle(log.id);
     results.push({ log_id: log.id, order_id: log.order_id, ...result });
   }
-
+ 
   const successCount = results.filter(r => r.success).length;
   const failCount = results.filter(r => !r.success).length;
-
+ 
   return {
     success: true,
     message: `Bulk retry complete: ${successCount} sent, ${failCount} failed`,
