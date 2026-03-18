@@ -15,6 +15,7 @@ const roleRoutes = require('./routes/role.routes');
 const userRoutes = require('./routes/user.routes');
 const whatsappCallbackRoutes = require('./routes/whatsappCallback.routes');
 const messageLogRoutes = require('./routes/messageLog.routes');
+const voiceCallbackRoutes = require('./routes/voiceCallback.routes');
 
 fastify.register(cors, { origin: '*' });
 fastify.register(authRoutes, { prefix: '/api/auth' });
@@ -27,6 +28,7 @@ fastify.register(roleRoutes, { prefix: '/api/role' });
 fastify.register(userRoutes, { prefix: '/api/user' });
 fastify.register(whatsappCallbackRoutes, { prefix: '/api/whatsapp' });
 fastify.register(messageLogRoutes, { prefix: '/api/message-log' });
+fastify.register(voiceCallbackRoutes, { prefix: '/api/voice' });
 
 // DB Connection
 sequelize.sync({ alter: true })

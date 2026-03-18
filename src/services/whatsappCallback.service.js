@@ -2,13 +2,12 @@ const { Op } = require('sequelize');
 const Store = require('../models/store.model');
 const Order = require('../models/order.model');
 const Template = require('../models/template.model');
-const Tag = require('../models/tag.model');
 const WhatsAppMessageResponse = require('../models/whatsappMessageResponse.model');
-const { fetchExistingTags, addTagToOrder } = require('../utils/shopifyHelper');
 const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
+const { hasExistingTag, findAndApplyTag } = require('../utils/tagHelper');
 const { createLog } = require('../services/messageLog.service');
+const { handleVoiceCall } = require('../services/voiceCallback.service');
 
-// ========== ORDER CREATION WEBHOOK ==========
 
 exports.handleOrderCreated = async (orderData) => {
   try {
@@ -42,18 +41,42 @@ exports.handleOrderCreated = async (orderData) => {
       order_data: orderData,
     });
 
-    if (!store.whatsapp_only) {
-      return { success: true, message: 'Order saved, WhatsApp not enabled for this store' };
+    const isCOD = orderData.payment_gateway_names?.includes('Cash on Delivery (COD)');
+    const rawPhone = orderData?.billing_address?.phone || orderData?.customer?.phone || '';
+    const phoneNumber = rawPhone.startsWith('03') ? rawPhone.replace(/^03/, '923') : rawPhone.replace(/^\+/, '');
+
+    const results = [];
+
+    if (store.whatsapp_only) {
+      const whatsappResult = await handleWhatsAppSend(store, orderData, isCOD, phoneNumber);
+      results.push({ service: 'whatsapp', ...whatsappResult });
     }
 
-    const isCOD = orderData.payment_gateway_names?.includes('Cash on Delivery (COD)');
+    if (store.voice_only) {
+      const voiceResult = await handleVoiceCall(orderData, store);
+      results.push({ service: 'voice', ...voiceResult });
+    }
 
+    if (results.length === 0) {
+      return { success: true, message: 'Order saved, no services enabled' };
+    }
+
+    return { success: true, message: 'Order saved and services triggered', data: results };
+  } catch (error) {
+    console.error('Error in handleOrderCreated:', JSON.stringify(error, null, 2));
+    return { success: false, message: error.message };
+  }
+};
+
+
+const handleWhatsAppSend = async (store, orderData, isCOD, phoneNumber) => {
+  try {
     if (store.post_paid && !store.pre_paid && !isCOD) {
-      return { success: true, message: 'Order saved, not COD - WhatsApp skipped' };
+      return { success: true, message: 'Not COD - WhatsApp skipped' };
     }
 
     if (store.pre_paid && !store.post_paid && isCOD) {
-      return { success: true, message: 'Order saved, COD order - WhatsApp skipped for prepaid only store' };
+      return { success: true, message: 'COD order - WhatsApp skipped for prepaid only store' };
     }
 
     const paymentType = isCOD ? 'post_paid' : 'pre_paid';
@@ -69,66 +92,35 @@ exports.handleOrderCreated = async (orderData) => {
     }
 
     if (!template) {
-      return { success: false, message: 'WhatsApp template not found for this store' };
+      return { success: false, message: 'WhatsApp template not found' };
     }
 
-    const rawPhone = orderData?.billing_address?.phone || orderData?.customer?.phone || '';
-    const phoneNumber = rawPhone.startsWith('03') ? rawPhone.replace(/^03/, '923') : rawPhone.replace(/^\+/, '');
     const sendResult = await sendWhatsAppMessage(orderData, template, store);
 
-    // Failed at network/token level
+    // Network/token error
     if (!sendResult || sendResult.success === false) {
-      await createLog({
-        store_id: store.id,
-        order_id: orderData.id,
-        template_id: template.id,
-        phone_number: phoneNumber,
-        status: 'failed',
-        error_message: sendResult?.error || 'Failed to send WhatsApp message',
-      });
+      await createLog({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'failed', error_message: sendResult?.error || 'Failed to send WhatsApp message' });
       return { success: false, message: sendResult?.error || 'Failed to send WhatsApp message' };
     }
 
-    // Failed at WhatsApp API level
+    // API level error
     const apiResponse = sendResult?.data?.data;
     const messageId = apiResponse?.result?.[0]?.messageId;
-    
+
     if (!messageId) {
-      await createLog({ 
-        store_id: store.id, 
-        order_id: orderData.id, 
-        template_id: template.id, 
-        phone_number: phoneNumber, 
-        status: 'failed', 
-        error_message: apiResponse?.errorMessage || 'WhatsApp API error' 
-      });
+      await createLog({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'failed', error_message: apiResponse?.errorMessage || 'WhatsApp API error' });
       return { success: false, message: apiResponse?.errorMessage || 'WhatsApp API error' };
     }
-    
-     // Success
-     await WhatsAppMessageResponse.create({ 
-      store_id: store.id, 
-      order_id: orderData.id, 
-      phone_number: apiResponse.result[0].number, 
-      message_id: messageId 
-    });
-     await createLog({ 
-      store_id: store.id, 
-      order_id: orderData.id, 
-      template_id: template.id, 
-      phone_number: phoneNumber, 
-      status: 'sent' 
-    });
- 
 
-    return { success: true, message: 'Order saved and WhatsApp message sent' };
+    // Success
+    await WhatsAppMessageResponse.create({ store_id: store.id, order_id: orderData.id, phone_number: apiResponse.result[0].number, message_id: messageId });
+    await createLog({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'sent' });
+
+    return { success: true, message: 'WhatsApp message sent' };
   } catch (error) {
-    console.error('Error in handleOrderCreated:', JSON.stringify(error, null, 2));
     return { success: false, message: error.message };
   }
 };
-
-// ========== WHATSAPP BUTTON CALLBACK ==========
 
 exports.handleWhatsAppCallback = async (callbackData) => {
   try {
@@ -170,34 +162,18 @@ exports.handleWhatsAppCallback = async (callbackData) => {
     }
 
     if (!buttonMeaning) {
-      return { success: false, message: 'Unknown button action' }; 
+      return { success: false, message: 'Unknown button action' };
     }
 
-    const existingTagsString = await fetchExistingTags(store, messageResponse.order_id);
-    const shopifyTags = existingTagsString
-      ? existingTagsString.split(',').map(t => t.trim().toLowerCase())
-      : [];
-
-    const storeTags = await Tag.findAll({
-      where: { store_id: store.id },
-    });
-
-    const ourTagNames = storeTags.map(t => t.name.toLowerCase());
-    const hasOurTag = ourTagNames.some(tag => shopifyTags.includes(tag));
+    const { hasOurTag } = await hasExistingTag(store, messageResponse.order_id);
 
     if (hasOurTag) {
       return { success: true, message: 'Order already tagged' };
     }
 
-    const tagToApply = storeTags.find(t => t.name.toLowerCase().includes(buttonMeaning));
+    const tagResult = await findAndApplyTag(store, messageResponse.order_id, buttonMeaning);
 
-    if (!tagToApply) {
-      return { success: false, message: `No ${buttonMeaning} tag found for this store` };
-    }
-
-    await addTagToOrder(store, messageResponse.order_id, tagToApply.name);
-
-    return { success: true, message: `Order ${buttonMeaning}ed and tagged successfully` };
+    return tagResult;
   } catch (error) {
     console.error('Error in handleWhatsAppCallback:', error.message);
     return { success: false, message: error.message };
