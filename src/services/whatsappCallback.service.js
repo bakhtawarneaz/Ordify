@@ -146,10 +146,6 @@ exports.handleWhatsAppCallback = async (callbackData) => {
       return { success: false, message: 'Store not found' };
     }
 
-    // const templates = await Template.findAll({
-    //   where: { store_id: store.id, template_type: 'whatsapp' },
-    // });
-
     const templates = await Template.findAll({
       where: { store_id: store.id, template_type: { [Op.in]: ['whatsapp', 'voice'] } },
     });
