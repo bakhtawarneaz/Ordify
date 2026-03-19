@@ -146,16 +146,22 @@ exports.handleWhatsAppCallback = async (callbackData) => {
       return { success: false, message: 'Store not found' };
     }
 
+    // const templates = await Template.findAll({
+    //   where: { store_id: store.id, template_type: 'whatsapp' },
+    // });
+
     const templates = await Template.findAll({
-      where: { store_id: store.id, template_type: 'whatsapp' },
+      where: { store_id: store.id, template_type: { [Op.in]: ['whatsapp', 'voice'] } },
     });
 
     let buttonMeaning = null;
+    let buttonChannel = null;
     for (const template of templates) {
       if (template.buttons && Array.isArray(template.buttons)) {
         const matchedButton = template.buttons.find(btn => btn.text === action);
         if (matchedButton) {
           buttonMeaning = matchedButton.meaning;
+          buttonChannel = template.template_type;
           break;
         }
       }
@@ -171,7 +177,7 @@ exports.handleWhatsAppCallback = async (callbackData) => {
       return { success: true, message: 'Order already tagged' };
     }
 
-    const tagResult = await findAndApplyTag(store, messageResponse.order_id, buttonMeaning);
+    const tagResult = await findAndApplyTag(store, messageResponse.order_id, buttonMeaning, buttonChannel);
 
     return tagResult;
   } catch (error) {

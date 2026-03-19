@@ -14,12 +14,20 @@ const Tag = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-
     name: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-
+    channel: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'whatsapp, voice, ordify',
+    },
+    meaning: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'confirm, cancel, agent, unanswered',
+    },
     color: {
       type: DataTypes.STRING,
       allowNull: true,

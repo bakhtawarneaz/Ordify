@@ -1,7 +1,7 @@
 const Tag = require('../models/tag.model');
 
 exports.createTag = async (payload) => {
-  const { store_id, name, color } = payload;
+  const { store_id, name, color, channel, meaning } = payload;
 
   if (!store_id || !name) {
     return { success: false, message: 'store_id and name are required' };
@@ -16,6 +16,8 @@ exports.createTag = async (payload) => {
     store_id,
     name,
     color: color || null,
+    channel,
+    meaning
   });
 
   return { success: true, message: 'Tag created successfully', data: tag };
