@@ -13,9 +13,11 @@ const storeRoutes = require('./routes/store.routes');
 const tagRoutes = require('./routes/tag.routes');
 const roleRoutes = require('./routes/role.routes');
 const userRoutes = require('./routes/user.routes');
-const whatsappCallbackRoutes = require('./routes/whatsappCallback.routes');
 const messageLogRoutes = require('./routes/messageLog.routes');
+const whatsappCallbackRoutes = require('./routes/whatsappCallback.routes');
 const voiceCallbackRoutes = require('./routes/voiceCallback.routes');
+const ordifyCallbackRoutes = require('./routes/ordifyCallback.routes');
+const orderWebhookRoutes = require('./routes/orderWebhook.routes');
 
 fastify.register(cors, { origin: '*' });
 fastify.register(authRoutes, { prefix: '/api/auth' });
@@ -26,9 +28,11 @@ fastify.register(storeRoutes, { prefix: '/api/store' });
 fastify.register(tagRoutes, { prefix: '/api/tag' });
 fastify.register(roleRoutes, { prefix: '/api/role' });
 fastify.register(userRoutes, { prefix: '/api/user' });
-fastify.register(whatsappCallbackRoutes, { prefix: '/api/whatsapp' });
 fastify.register(messageLogRoutes, { prefix: '/api/message-log' });
+fastify.register(whatsappCallbackRoutes, { prefix: '/api/whatsapp' });
 fastify.register(voiceCallbackRoutes, { prefix: '/api/voice' });
+fastify.register(ordifyCallbackRoutes, { prefix: '/api/ordify' });
+fastify.register(orderWebhookRoutes, { prefix: '/api/webhook' });
 
 // DB Connection
 sequelize.sync({ alter: true })

@@ -1,76 +1,18 @@
 const { Op } = require('sequelize');
 const Store = require('../models/store.model');
-const Order = require('../models/order.model');
 const Template = require('../models/template.model');
 const WhatsAppMessageResponse = require('../models/whatsappMessageResponse.model');
 const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
 const { hasExistingTag, findAndApplyTag } = require('../utils/tagHelper');
 const { createLog } = require('../services/messageLog.service');
-const { handleVoiceCall } = require('../services/voiceCallback.service');
 
-
-exports.handleOrderCreated = async (orderData) => {
+exports.handleWhatsAppSend = async (store, orderData) => {
   try {
-    const match = orderData.order_status_url?.match(/\/\/([^\/]+)\//);
-    const storeUrl = match ? match[1] : null;
-
-    if (!storeUrl) {
-      return { success: false, message: 'Could not identify store from order' };
-    }
-
-    const store = await Store.findOne({
-      where: { store_url: { [Op.like]: `%${storeUrl}%` }, status: true },
-    });
-
-    if (!store) {
-      return { success: false, message: 'Store not found or inactive' };
-    }
-
-    const existingOrder = await Order.findOne({
-      where: { store_id: store.id, order_id: orderData.id },
-    });
-
-    if (existingOrder) {
-      return { success: false, message: 'Order already processed' };
-    }
-
-    await Order.create({
-      store_id: store.id,
-      order_id: orderData.id,
-      order_number: orderData.name || orderData.order_number,
-      order_data: orderData,
-    });
 
     const isCOD = orderData.payment_gateway_names?.includes('Cash on Delivery (COD)');
     const rawPhone = orderData?.billing_address?.phone || orderData?.customer?.phone || '';
     const phoneNumber = rawPhone.startsWith('03') ? rawPhone.replace(/^03/, '923') : rawPhone.replace(/^\+/, '');
 
-    const results = [];
-
-    if (store.whatsapp_only) {
-      const whatsappResult = await handleWhatsAppSend(store, orderData, isCOD, phoneNumber);
-      results.push({ service: 'whatsapp', ...whatsappResult });
-    }
-
-    if (store.voice_only) {
-      const voiceResult = await handleVoiceCall(orderData, store);
-      results.push({ service: 'voice', ...voiceResult });
-    }
-
-    if (results.length === 0) {
-      return { success: true, message: 'Order saved, no services enabled' };
-    }
-
-    return { success: true, message: 'Order saved and services triggered', data: results };
-  } catch (error) {
-    console.error('Error in handleOrderCreated:', JSON.stringify(error, null, 2));
-    return { success: false, message: error.message };
-  }
-};
-
-
-const handleWhatsAppSend = async (store, orderData, isCOD, phoneNumber) => {
-  try {
     if (store.post_paid && !store.pre_paid && !isCOD) {
       return { success: true, message: 'Not COD - WhatsApp skipped' };
     }
@@ -147,7 +89,7 @@ exports.handleWhatsAppCallback = async (callbackData) => {
     }
 
     const templates = await Template.findAll({
-      where: { store_id: store.id, template_type: { [Op.in]: ['whatsapp', 'voice'] } },
+      where: { store_id: store.id, template_type: { [Op.in]: ['whatsapp', 'voice', 'ordify'] } },
     });
 
     let buttonMeaning = null;

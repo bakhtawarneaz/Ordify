@@ -76,26 +76,15 @@ const Store = sequelize.define(
       defaultValue: false,
     },
 
-    judgeme_api_token: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-    },
+    // judgeme_api_token: {
+    //   type: DataTypes.STRING(255),
+    //   allowNull: true,
+    // },
 
-    feedback_delay: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-
-    voice_unanswered_whatsapp: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-
-    voice_unanswered: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-
+    // feedback_delay: {
+    //   type: DataTypes.INTEGER,
+    //   allowNull: true,
+    // },
     campaign_id: {
       type: DataTypes.STRING(255),
       allowNull: true,
