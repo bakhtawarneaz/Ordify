@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const MessageLog = require('../models/messageLog.model');
+const RetryQueue = require('../models/retryQueue.model');
 const Store = require('../models/store.model');
 const Order = require('../models/order.model');
 const Template = require('../models/template.model');
@@ -7,8 +7,8 @@ const WhatsAppMessageResponse = require('../models/whatsappMessageResponse.model
 const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
 
 
-exports.createLog = async ({ store_id, order_id, template_id, phone_number, status, error_message }) => {
-  const log = await MessageLog.create({
+exports.createRetryQueue = async ({ store_id, order_id, template_id, phone_number, status, error_message }) => {
+  const log = await RetryQueue.create({
     store_id,
     order_id,
     template_id: template_id || null,
@@ -22,7 +22,7 @@ exports.createLog = async ({ store_id, order_id, template_id, phone_number, stat
 };
 
 
-exports.getAllLogs = async (query) => {
+exports.getAllRetryQueue = async (query) => {
   const where = {};
 
   if (query.store_id) {
@@ -43,7 +43,7 @@ exports.getAllLogs = async (query) => {
     };
   }
 
-  const logs = await MessageLog.findAll({
+  const logs = await RetryQueue.findAll({
     where,
     order: [['createdAt', 'DESC']],
   });
@@ -53,7 +53,7 @@ exports.getAllLogs = async (query) => {
 
 
 exports.retrySingle = async (logId) => {
-  const log = await MessageLog.findByPk(logId);
+  const log = await RetryQueue.findByPk(logId);
 
   if (!log) {
     return { success: false, message: 'Log not found' };
@@ -145,7 +145,7 @@ exports.retryBulk = async (body, query) => {
     }
   }
  
-  const failedLogs = await MessageLog.findAll({ where });
+  const failedLogs = await RetryQueue.findAll({ where });
  
   const retryableLogs = failedLogs.filter(log => log.retry_count < log.max_retries);
  

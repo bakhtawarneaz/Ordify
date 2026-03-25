@@ -3,7 +3,7 @@ const Store = require('../models/store.model');
 const Order = require('../models/order.model');
 const Template = require('../models/template.model');
 const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
-const { createLog } = require('../services/messageLog.service');
+const { createRetryQueue } = require('../services/retryQueue.service');
 const { isServiceActive } = require('../services/storeService.service');
 const { handleWhatsAppSend } = require('../services/whatsappCallback.service');
 const { handleVoiceCall } = require('../services/voiceCallback.service');
@@ -21,7 +21,7 @@ exports.handleShopifyWebhook = async (orderData, topic) => {
     }
 
     const store = await Store.findOne({
-      where: { store_url: { [Op.like]: `%${storeUrl}%` }, status: true },
+      where: { store_url: { [Op.like]: `%${storeUrl}%` }, status: true }, 
     });
 
     if (!store) {
@@ -226,7 +226,7 @@ const sendEventWhatsApp = async (store, orderData, action, itemCount = null) => 
 
     // Network/token error
     if (!sendResult || sendResult.success === false) {
-      await createLog({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'failed', error_message: sendResult?.error || 'Failed to send' });
+      await createRetryQueue({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'failed', error_message: sendResult?.error || 'Failed to send' });
       return { success: false, message: sendResult?.error || 'Failed to send' };
     }
 
@@ -235,12 +235,12 @@ const sendEventWhatsApp = async (store, orderData, action, itemCount = null) => 
     const messageId = apiResponse?.result?.[0]?.messageId;
 
     if (!messageId) {
-      await createLog({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'failed', error_message: apiResponse?.errorMessage || 'WhatsApp API error' });
+      await createRetryQueue({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'failed', error_message: apiResponse?.errorMessage || 'WhatsApp API error' });
       return { success: false, message: apiResponse?.errorMessage || 'WhatsApp API error' };
     }
 
     // Success
-    await createLog({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'sent' });
+    await createRetryQueue({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'sent' });
 
     return { success: true, message: `${action} WhatsApp sent` };
   } catch (error) {

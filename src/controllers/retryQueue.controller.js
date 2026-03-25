@@ -1,8 +1,8 @@
-const messageLogService = require('../services/messageLog.service');
+const retryQueueService = require('../services/retryQueue.service');
 
-exports.getAllLogs = async (req, reply) => {
+exports.getAllRetryQueue = async (req, reply) => {
   try {
-    const res = await messageLogService.getAllLogs(req.query);
+    const res = await retryQueueService.getAllRetryQueue(req.query);
     return reply.code(200).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
@@ -11,7 +11,7 @@ exports.getAllLogs = async (req, reply) => {
 
 exports.retrySingle = async (req, reply) => {
   try {
-    const res = await messageLogService.retrySingle(req.params.id);
+    const res = await retryQueueService.retrySingle(req.params.id);
     return reply.code(res.success ? 200 : 400).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
@@ -20,7 +20,7 @@ exports.retrySingle = async (req, reply) => {
 
 exports.retryBulk = async (req, reply) => {
   try {
-    const res = await messageLogService.retryBulk(req.body || {}, req.query);
+    const res = await retryQueueService.retryBulk(req.body || {}, req.query);
     return reply.code(200).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });

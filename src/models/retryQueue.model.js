@@ -1,8 +1,8 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
-const MessageLog = sequelize.define(
-  'MessageLog',
+const RetryQueue = sequelize.define(
+  'RetryQueue',
   {
     id: {
       type: DataTypes.INTEGER,
@@ -55,9 +55,9 @@ const MessageLog = sequelize.define(
     },
   },
   {
-    tableName: 'message_logs',
+    tableName: 'retry_queues',
     timestamps: true,
   }
 );
 
-module.exports = MessageLog;
+module.exports = RetryQueue;
