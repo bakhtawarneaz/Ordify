@@ -20,6 +20,7 @@ const ordifyCallbackRoutes = require('./routes/ordifyCallback.routes');
 const storeServiceRoutes = require('./routes/storeService.routes');
 const webhookRoutes = require('./routes/shopifyWebhook.routes');
 const activityLogRoutes = require('./routes/activityLog.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
 
 fastify.register(cors, { origin: '*' });
 fastify.register(authRoutes, { prefix: '/api/auth' });
@@ -37,6 +38,7 @@ fastify.register(ordifyCallbackRoutes, { prefix: '/api/ordify' });
 fastify.register(storeServiceRoutes, { prefix: '/api/store-service' });
 fastify.register(webhookRoutes, { prefix: '/api/webhook' });
 fastify.register(activityLogRoutes, { prefix: '/api/activity-log' });
+fastify.register(dashboardRoutes, { prefix: '/api/dashboard' });
 
 // DB Connection
 sequelize.sync({ alter: true })

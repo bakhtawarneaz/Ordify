@@ -105,6 +105,9 @@ exports.handleWhatsAppCallback = async (callbackData) => {
       where: { store_id: store.id, template_type: { [Op.in]: ['whatsapp', 'voice', 'ordify'] } },
     });
 
+    const order = await Order.findOne({ where: { order_id: messageResponse.order_id, store_id: store.id } });
+    const orderNumber = order?.order_number || null;
+
     let buttonMeaning = null;
     let buttonChannel = null;
     for (const template of templates) {
@@ -119,14 +122,11 @@ exports.handleWhatsAppCallback = async (callbackData) => {
     }
 
     if (!buttonMeaning) {
-      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, channel: 'whatsapp', action: 'whatsapp_callback', message: `Unknown button action: ${action}`, details: { message_id, action } });
+      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, order_number: orderNumber, channel: 'whatsapp', action: 'whatsapp_callback', message: `Unknown button action: ${action}`, details: { message_id, action } });
       return { success: false, message: 'Unknown button action' };
     }
 
     const { hasOurTag } = await hasExistingTag(store, messageResponse.order_id);
-
-    const order = await Order.findOne({ where: { order_id: messageResponse.order_id, store_id: store.id } });
-    const orderNumber = order?.order_number || null;
 
     if (hasOurTag) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, order_number: orderNumber, channel: buttonChannel, action: 'tag_skipped', message: 'Order already tagged', details: { message_id, button_action: action } });
