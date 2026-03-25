@@ -10,6 +10,8 @@ async function dashboardRoutes(fastify) {
   fastify.get('/stores', { preHandler: [authMiddleware, canView('dashboard')] }, dashboardController.getStoreBreakdown);
   fastify.get('/retry', { preHandler: [authMiddleware, canView('dashboard')] }, dashboardController.getRetryStats);
   fastify.get('/active-stores', { preHandler: [authMiddleware, canView('dashboard')] }, dashboardController.getActiveStores);
+  fastify.get('/payment-types', { preHandler: [authMiddleware, canView('dashboard')] }, dashboardController.getPaymentTypeStats);
+  fastify.get('/templates', { preHandler: [authMiddleware, canView('dashboard')] }, dashboardController.getTemplateOverview);
 }
 
 module.exports = dashboardRoutes;
