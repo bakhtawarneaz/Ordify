@@ -17,9 +17,9 @@ const retryQueueRoutes = require('./routes/retryQueue.routes');
 const whatsappCallbackRoutes = require('./routes/whatsappCallback.routes');
 const voiceCallbackRoutes = require('./routes/voiceCallback.routes');
 const ordifyCallbackRoutes = require('./routes/ordifyCallback.routes');
-// const orderWebhookRoutes = require('./routes/orderWebhook.routes');
 const storeServiceRoutes = require('./routes/storeService.routes');
 const webhookRoutes = require('./routes/shopifyWebhook.routes');
+const activityLogRoutes = require('./routes/activityLog.routes');
 
 fastify.register(cors, { origin: '*' });
 fastify.register(authRoutes, { prefix: '/api/auth' });
@@ -34,9 +34,9 @@ fastify.register(retryQueueRoutes, { prefix: '/api/retry-queue' });
 fastify.register(whatsappCallbackRoutes, { prefix: '/api/whatsapp' });
 fastify.register(voiceCallbackRoutes, { prefix: '/api/voice' });
 fastify.register(ordifyCallbackRoutes, { prefix: '/api/ordify' });
-// fastify.register(orderWebhookRoutes, { prefix: '/api/webhook' });
 fastify.register(storeServiceRoutes, { prefix: '/api/store-service' });
 fastify.register(webhookRoutes, { prefix: '/api/webhook' });
+fastify.register(activityLogRoutes, { prefix: '/api/activity-log' });
 
 // DB Connection
 sequelize.sync({ alter: true })
