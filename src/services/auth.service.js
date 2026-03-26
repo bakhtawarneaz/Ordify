@@ -1,5 +1,6 @@
 const User = require('../models/user.model');
 const Role = require('../models/role.model');
+const { Op } = require('sequelize');
 const { hashPassword, comparePassword } = require('../utils/bcrypt');
 const { generateToken } = require('../utils/jwt');
 
@@ -14,7 +15,10 @@ exports.register = async ({ name, email, password, role_id, number, image }) => 
     return { success: false, message: 'Invalid role' };
   }
 
-  const clientRole = await Role.findOne({ where: { name: 'client' } });
+  const clientRole = await Role.findOne({ 
+    where: { name: { [Op.iLike]: 'client' } } 
+  });
+  
   if (!clientRole) {
     return { success: false, message: 'Client role not found' };
   }
