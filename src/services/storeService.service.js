@@ -55,19 +55,20 @@ exports.updateServices = async (payload) => {
 
 };
 
-exports.getServicesByStore = async (store_id) => {
-  if (!store_id) {
-    return { success: false, message: 'store_id is required' };
+exports.getServicesByStore = async (query) => {
+  const where = {};
+
+  if (query.store_id) {
+    where.store_id = query.store_id;
   }
 
   const services = await StoreService.findAll({
-    where: { store_id },
+    where,
     order: [['id', 'ASC']],
   });
 
   return { success: true, data: services };
 };
-
 exports.isServiceActive = async (store_id, service_key) => {
   const service = await StoreService.findOne({
     where: { store_id, service_key, is_active: true },
