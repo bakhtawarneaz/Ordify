@@ -18,34 +18,8 @@ exports.fetchExistingTags = async (store, orderId) => {
   }
 };
 
-// exports.addTagToOrder = async (store, orderId, newTag) => {
-//   try {
-//     const existingTags = await exports.fetchExistingTags(store, orderId);
-//     const tagsArray = existingTags ? existingTags.split(',').map(t => t.trim()) : [];
-
-//     if (tagsArray.includes(newTag)) {
-//       return { success: true, message: 'Tag already exists' };
-//     }
-
-//     tagsArray.push(newTag);
-//     const updatedTags = tagsArray.join(', ');
-
-//     await axios.put(
-//       `https://${store.store_id}.myshopify.com/admin/api/2023-01/orders/${orderId}.json`,
-//       { order: { id: orderId, tags: updatedTags } },
-//       { headers: getShopifyHeaders(store.access_token), timeout: 10000, }
-//     );
-
-//     return { success: true, message: `Tag "${newTag}" added successfully` };
-//   } catch (error) {
-//     console.error(`Error adding tag to order ${orderId}:`, error.message);
-//     return { success: false, message: error.message };
-//   }
-// };
-
 exports.addTagToOrder = async (store, orderId, newTag, existingTags = null) => {
   try {
-    // Agar tags pehle se pass hue hain tou use karo, warna fetch karo
     if (existingTags === null) {
       existingTags = await exports.fetchExistingTags(store, orderId);
     }
