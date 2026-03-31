@@ -1,16 +1,10 @@
 const axios = require('axios');
-
+const { extractPhoneFromOrder } = require('./phoneHelper');
 const VOICE_API_URL = 'https://voicegateway.its.com.pk/api';
-
-const formatPhoneNumber = (phone) => {
-  const cleanedPhone = phone.replace(/^\+/, '');
-  return cleanedPhone.startsWith('03') ? phone.replace(/^03/, '923') : phone;
-};
 
 exports.sendVoiceCall = async (order, store) => {
   try {
-    const customerPhone = order?.billing_address?.phone || order?.customer?.phone || '';
-    const supportedNumber = formatPhoneNumber(customerPhone);
+    const supportedNumber = extractPhoneFromOrder(order);
 
     const requestData = {
       apikey: store.api_key,
@@ -21,6 +15,7 @@ exports.sendVoiceCall = async (order, store) => {
 
     const response = await axios.post(VOICE_API_URL, requestData, {
       headers: { 'Content-Type': 'application/json' },
+      timeout: 10000,
     });
 
     return response.data;

@@ -12,6 +12,7 @@ exports.sendOrdify = async (order, store) => {
 
     const response = await axios.post(ORDIFY_API_URL, data, {
       headers: { 'Content-Type': 'application/json' },
+      timeout: 10000,
     });
 
     return response.data;

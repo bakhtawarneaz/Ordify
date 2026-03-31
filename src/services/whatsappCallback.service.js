@@ -7,13 +7,13 @@ const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
 const { hasExistingTag, findAndApplyTag } = require('../utils/tagHelper');
 const { createRetryQueue } = require('../services/retryQueue.service');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
+const { extractPhoneFromOrder } = require('../utils/phoneHelper');
 
 exports.handleWhatsAppSend = async (store, orderData) => {
   try {
 
     const isCOD = orderData.payment_gateway_names?.includes('Cash on Delivery (COD)');
-    const rawPhone = orderData?.billing_address?.phone || orderData?.customer?.phone || '';
-    const phoneNumber = rawPhone.startsWith('03') ? rawPhone.replace(/^03/, '923') : rawPhone.replace(/^\+/, '');
+    const phoneNumber = extractPhoneFromOrder(orderData);
 
     if (store.post_paid && !store.pre_paid && !isCOD) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'whatsapp_skipped', message: 'Not COD - WhatsApp skipped' });
@@ -126,14 +126,14 @@ exports.handleWhatsAppCallback = async (callbackData) => {
       return { success: false, message: 'Unknown button action' };
     }
 
-    const { hasOurTag } = await hasExistingTag(store, messageResponse.order_id);
+    const { hasOurTag, existingTagsString } = await hasExistingTag(store, messageResponse.order_id);
 
     if (hasOurTag) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, order_number: orderNumber, channel: buttonChannel, action: 'tag_skipped', message: 'Order already tagged', details: { message_id, button_action: action } });
       return { success: true, message: 'Order already tagged' };
     }
 
-    const tagResult = await findAndApplyTag(store, messageResponse.order_id, buttonMeaning, buttonChannel);
+    const tagResult = await findAndApplyTag(store, messageResponse.order_id, buttonMeaning, buttonChannel, existingTagsString);
 
     if (tagResult.success) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, order_number: orderNumber, channel: buttonChannel, action: 'tag_added', message: `Tag "${tagResult.tag}" added`, details: { tag: tagResult.tag, meaning: buttonMeaning, button_action: action } });

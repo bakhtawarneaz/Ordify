@@ -1,12 +1,9 @@
 const Store = require('../models/store.model');
-const Template = require('../models/template.model');
-const WhatsAppMessageResponse = require('../models/whatsappMessageResponse.model');
 const Order = require('../models/order.model');
-const { getOrderDetails } = require('../utils/shopifyHelper');
-const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
 const { sendOrdify } = require('../utils/ordifyHelper');
 const { hasExistingTag, findAndApplyTag } = require('../utils/tagHelper');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
+const { sendUnansweredWhatsApp } = require('../utils/unansweredHelper');
 
 exports.handleOrdifySend = async (orderData, store) => {
   try {
@@ -59,12 +56,11 @@ exports.handleOrdifyCallback = async (callbackData) => {
     const action = status?.trim() || null;
 
     if (!action) {
-      await sendOrdifyUnansweredWhatsApp(store, orderIdNum);
-      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderIdNum, channel: 'ordify', action: 'ordify_unanswered', message: 'Ordify unanswered - WhatsApp sent' });
-      return { success: true, message: 'Ordify unanswered - WhatsApp sent' };
+      const unansweredResult = await sendUnansweredWhatsApp(store, orderIdNum, 'ordify');
+      return unansweredResult; 
     }
 
-    const { hasOurTag } = await hasExistingTag(store, orderIdNum);
+    const { hasOurTag, existingTagsString } = await hasExistingTag(store, orderIdNum);
 
     const order = await Order.findOne({ where: { order_id: orderIdNum, store_id: store.id } });
     const orderNumber = order?.order_number || null;
@@ -87,7 +83,7 @@ exports.handleOrdifyCallback = async (callbackData) => {
       return { success: false, message: 'Invalid action' };
     }
 
-    const tagResult = await findAndApplyTag(store, orderIdNum, meaning, 'ordify');
+    const tagResult = await findAndApplyTag(store, orderIdNum, meaning, 'ordify', existingTagsString);
 
     if (tagResult.success) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderIdNum, order_number: orderNumber, channel: 'ordify', action: 'tag_added', message: `Tag "${tagResult.tag}" added via ordify`, details: { tag: tagResult.tag, meaning, status: action } });
@@ -100,44 +96,5 @@ exports.handleOrdifyCallback = async (callbackData) => {
     console.error('Error in handleOrdifyCallback:', error.message);
     await logFailed({ store_id: null, store_name: null, order_id: null, channel: 'ordify', action: 'ordify_callback', message: `Unexpected error: ${error.message}`, details: { error: error.message } });
     return { success: false, message: error.message };
-  }
-};
-
-const sendOrdifyUnansweredWhatsApp = async (store, orderId) => {
-  try {
-    const template = await Template.findOne({
-      where: { store_id: store.id, template_type: 'ordify', action: 'ordify_unanswered' },
-    });
-
-    if (!template) {
-      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel: 'ordify', action: 'unanswered_whatsapp_sent', message: 'Ordify unanswered template not found' });
-      return;
-    }
-
-    const orderDetails = await getOrderDetails(store, orderId);
-    if (!orderDetails) {
-      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel: 'ordify', action: 'unanswered_whatsapp_sent', message: 'Order details not found from Shopify' });
-      return;
-    }
-
-    const sendResult = await sendWhatsAppMessage(orderDetails, template, store);
-
-    const apiResponse = sendResult?.data?.data;
-    const messageId = apiResponse?.result?.[0]?.messageId;
-
-    if (messageId) {
-      await WhatsAppMessageResponse.create({
-        store_id: store.id,
-        order_id: orderId,
-        phone_number: apiResponse.result[0].number,
-        message_id: messageId,
-      });
-      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel: 'ordify', action: 'unanswered_whatsapp_sent', message: 'Unanswered WhatsApp sent', details: { phone: apiResponse.result[0].number, messageId } });
-    } else {
-      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel: 'ordify', action: 'unanswered_whatsapp_sent', message: 'Unanswered WhatsApp failed - no messageId', details: { error: apiResponse?.errorMessage } });
-    }
-  } catch (error) {
-    console.error('Error sending ordify unanswered WhatsApp:', error.message);
-    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel: 'ordify', action: 'unanswered_whatsapp_sent', message: `Unexpected error: ${error.message}`, details: { error: error.message } });
   }
 };

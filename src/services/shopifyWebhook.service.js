@@ -4,12 +4,12 @@ const Order = require('../models/order.model');
 const Template = require('../models/template.model');
 const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
 const { createRetryQueue } = require('../services/retryQueue.service');
-const { isServiceActive } = require('../services/storeService.service');
 const { handleWhatsAppSend } = require('../services/whatsappCallback.service');
 const { handleVoiceCall } = require('../services/voiceCallback.service');
 const { handleOrdifySend } = require('../services/ordifyCallback.service');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
-
+const { getActiveServices } = require('../services/storeService.service');
+const { extractPhoneFromOrder } = require('../utils/phoneHelper');
 
 exports.handleShopifyWebhook = async (orderData, topic) => {
   try {
@@ -119,19 +119,40 @@ const handleOrderFulfilled = async (store, orderData) => {
 
     const itemCount = latestFulfillment.line_items?.length || 0;
     const results = [];
+    const services = await getActiveServices(store.id);
+
+    const order = await Order.findOne({
+      where: { store_id: store.id, order_id: orderData.id },
+    });
 
     // Split order service
-    const splitActive = await isServiceActive(store.id, 'order_split');
+    const splitActive = services.isActive('order_split');
     if (splitActive && itemCount > 0) {
-      const splitResult = await sendEventWhatsApp(store, orderData, 'split_order', itemCount);
-      results.push({ service: 'order_split', ...splitResult });
+      if (order?.split_notified) {
+        await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_split', message: 'Split notification already sent - skipped' });
+      } else {
+        const splitResult = await sendEventWhatsApp(store, orderData, 'split_order', itemCount);
+        results.push({ service: 'order_split', ...splitResult });
+
+        if (splitResult.success && order) {
+          await order.update({ split_notified: true });
+        }
+      }
     }
 
     // Dispatch service
-    const dispatchActive = await isServiceActive(store.id, 'order_dispatch');
+    const dispatchActive = services.isActive('order_dispatch');
     if (dispatchActive) {
-      const dispatchResult = await sendEventWhatsApp(store, orderData, 'order_dispatch');
-      results.push({ service: 'order_dispatch', ...dispatchResult });
+      if (order?.dispatch_notified) {
+        await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_dispatch', message: 'Dispatch notification already sent - skipped' });
+      } else {
+        const dispatchResult = await sendEventWhatsApp(store, orderData, 'order_dispatch');
+        results.push({ service: 'order_dispatch', ...dispatchResult });
+
+        if (dispatchResult.success && order) {
+          await order.update({ dispatch_notified: true });
+        }
+      }
     }
 
     if (results.length === 0) {
@@ -149,14 +170,29 @@ const handleOrderFulfilled = async (store, orderData) => {
 
 const handleOrderPaid = async (store, orderData) => {
   try {
-    const paidActive = await isServiceActive(store.id, 'order_paid');
+    const services = await getActiveServices(store.id);
+    const paidActive = services.isActive('order_paid');
 
     if (!paidActive) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_paid', message: 'Order paid service not active for this store' });
       return { success: true, message: 'Order paid service not active for this store' };
     }
 
+    const order = await Order.findOne({
+      where: { store_id: store.id, order_id: orderData.id },
+    });
+
+    if (order?.paid_notified) {
+      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_paid', message: 'Paid notification already sent - skipped' });
+      return { success: true, message: 'Paid notification already sent - skipped' };
+    }
+
     const result = await sendEventWhatsApp(store, orderData, 'order_paid');
+
+    if (result.success && order) {
+      await order.update({ paid_notified: true });
+    }
+
     return { service: 'order_paid', ...result };
   } catch (error) {
     await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_paid', message: `Order paid error: ${error.message}`, details: { error: error.message } });
@@ -168,28 +204,49 @@ const handleOrderPaid = async (store, orderData) => {
 const handleOrderUpdated = async (store, orderData) => {
   try {
     const results = [];
+    const services = await getActiveServices(store.id);
+
+    const order = await Order.findOne({
+      where: { store_id: store.id, order_id: orderData.id },
+    });
 
     // Delivered service
-    const deliveredActive = await isServiceActive(store.id, 'order_delivered');
+    const deliveredActive = services.isActive('order_delivered');
     if (deliveredActive) {
-      const fulfillments = orderData.fulfillments || [];
-      const isDelivered = fulfillments.some(f => f.shipment_status === 'delivered');
+      if (order?.delivered_notified) {
+        await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_delivered', message: 'Delivered notification already sent - skipped' });
+      } else {
+        const fulfillments = orderData.fulfillments || [];
+        const isDelivered = fulfillments.some(f => f.shipment_status === 'delivered');
 
-      if (isDelivered) {
-        const deliveredResult = await sendEventWhatsApp(store, orderData, 'order_delivered');
-        results.push({ service: 'order_delivered', ...deliveredResult });
+        if (isDelivered) {
+          const deliveredResult = await sendEventWhatsApp(store, orderData, 'order_delivered');
+          results.push({ service: 'order_delivered', ...deliveredResult });
+
+          if (deliveredResult.success && order) {
+            await order.update({ delivered_notified: true });
+          }
+        }
       }
     }
 
     // Tracking service
-    const trackingActive = await isServiceActive(store.id, 'order_tracking');
+    const trackingActive = services.isActive('order_tracking');
     if (trackingActive) {
-      const fulfillments = orderData.fulfillments || [];
-      const hasTracking = fulfillments.some(f => f.tracking_number);
+      if (order?.tracking_notified) {
+        await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_tracking', message: 'Tracking notification already sent - skipped' });
+      } else {
+        const fulfillments = orderData.fulfillments || [];
+        const hasTracking = fulfillments.some(f => f.tracking_number);
 
-      if (hasTracking) {
-        const trackingResult = await sendEventWhatsApp(store, orderData, 'order_tracking');
-        results.push({ service: 'order_tracking', ...trackingResult });
+        if (hasTracking) {
+          const trackingResult = await sendEventWhatsApp(store, orderData, 'order_tracking');
+          results.push({ service: 'order_tracking', ...trackingResult });
+
+          if (trackingResult.success && order) {
+            await order.update({ tracking_notified: true });
+          }
+        }
       }
     }
 
@@ -204,7 +261,6 @@ const handleOrderUpdated = async (store, orderData) => {
     return { success: false, message: error.message };
   }
 };
-
 
 const sendEventWhatsApp = async (store, orderData, action, itemCount = null) => {
   try {
@@ -231,9 +287,7 @@ const sendEventWhatsApp = async (store, orderData, action, itemCount = null) => 
       return { success: false, message: `Template not found for action: ${action}` };
     }
 
-    const rawPhone = orderData?.billing_address?.phone || orderData?.customer?.phone || '';
-    const phoneNumber = rawPhone.startsWith('03') ? rawPhone.replace(/^03/, '923') : rawPhone.replace(/^\+/, '');
-
+    const phoneNumber = extractPhoneFromOrder(orderData);
     const sendResult = await sendWhatsAppMessage(orderData, template, store);
 
     // Network/token error

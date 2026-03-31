@@ -1,6 +1,6 @@
 const axios = require('axios');
-
 const WHATSAPP_API_URL = 'https://waba-be-whatsapp.its.com.pk/v1/template/message';
+const { extractPhoneFromOrder } = require('./phoneHelper');
 
 const buildParameters = (textParameters, order) => {
   const customerName = `${order?.billing_address?.first_name || ''} ${order?.billing_address?.last_name || ''}`.trim();
@@ -58,17 +58,11 @@ const buildParameters = (textParameters, order) => {
   });
 };
 
-const formatPhoneNumber = (phone) => {
-  const cleanedPhone = phone.replace(/^\+/, '');
-  return cleanedPhone.startsWith('03') ? phone.replace(/^03/, '923') : phone;
-};
-
 exports.sendWhatsAppMessage = async (order, template, store, phoneNumber = null) => {
   try {
     let supportedNumber = phoneNumber;
     if (!supportedNumber) {
-      const rawPhone = order?.billing_address?.phone || order?.customer?.phone || '';
-      supportedNumber = formatPhoneNumber(rawPhone);
+      supportedNumber = extractPhoneFromOrder(order);
     }
 
     const textParameters = typeof template.body_text_parameters === 'string'
@@ -117,6 +111,7 @@ exports.sendWhatsAppMessage = async (order, template, store, phoneNumber = null)
         'content-type': 'application/json;charset=UTF-8',
         'xt-user-token': template.wt_api,
       },
+      timeout: 10000,
     });
     return response.data;
   } catch (error) {

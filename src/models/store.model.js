@@ -75,7 +75,10 @@ const Store = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-
+    client_secret: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     // judgeme_api_token: {
     //   type: DataTypes.STRING(255),
     //   allowNull: true,

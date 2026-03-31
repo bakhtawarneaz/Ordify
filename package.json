@@ -6,28 +6,26 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "pm2:local": "pm2 start ecosystem.config.js --env local",
-    "pm2:dev": "pm2 start ecosystem.config.js --env development",
-    "pm2:prod": "pm2 start ecosystem.config.js --env production",
-    "pm2:logs": "pm2 logs notify",
-    "pm2:restart": "pm2 restart notify",
-    "pm2:stop": "pm2 stop notify",
-    "pm2:delete": "pm2 delete notify",
-    "pm2:save": "pm2 save"
+    "migrate": "npx sequelize-cli db:migrate",
+    "migrate:undo": "npx sequelize-cli db:migrate:undo",
+    "migrate:create": "npx sequelize-cli migration:generate --name"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.2",
     "@fastify/jwt": "^10.0.0",
     "@fastify/multipart": "^9.2.1",
+    "@fastify/rate-limit": "^10.3.0",
     "@fastify/swagger": "^9.5.2",
     "@fastify/swagger-ui": "^5.2.3",
     "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
     "dotenv": "^17.2.3",
     "fastify": "^5.6.1",
+    "fastify-raw-body": "^5.0.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
@@ -35,6 +33,7 @@
   },
   "devDependencies": {
     "eslint": "^9.38.0",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "sequelize-cli": "^6.6.5"
   }
 }

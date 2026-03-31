@@ -24,10 +24,29 @@ const Order = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
-
     order_data: {
       type: DataTypes.JSONB,
       allowNull: false,
+    },
+    delivered_notified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    tracking_notified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    split_notified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    dispatch_notified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    paid_notified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
   },
   {

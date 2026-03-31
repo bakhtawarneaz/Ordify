@@ -1,50 +1,133 @@
-// src/app.js
-const fastify = require('fastify')({ logger: true });
+const fastify = require('fastify')({
+  logger: {
+    level: process.env.LOG_LEVEL || 'info',
+    ...(process.env.NODE_ENV === 'production' && {
+      serializers: {
+        req(request) {
+          return {
+            method: request.method,
+            url: request.url,
+            hostname: request.hostname,
+            remoteAddress: request.ip,
+          };
+        },
+      },
+    }),
+  },
+  trustProxy: process.env.TRUST_PROXY === 'true',
+  requestTimeout: parseInt(process.env.REQUEST_TIMEOUT) || 30000,
+  bodyLimit: parseInt(process.env.BODY_LIMIT) || 1048576, // 1MB default
+});
+
 const cors = require('@fastify/cors');
+const helmet = require('@fastify/helmet');
+const rateLimit = require('@fastify/rate-limit');
 const sequelize = require('./config/db');
 
+fastify.register(helmet, {
+  contentSecurityPolicy: false, 
+});
 
-// Import Routes
-const authRoutes = require('./routes/auth.routes');
-const menuRoutes = require('./routes/menu.routes');
-const userPermissionRoutes = require('./routes/userPermission.routes');
-const templateRoutes = require('./routes/template.routes');
-const storeRoutes = require('./routes/store.routes');
-const tagRoutes = require('./routes/tag.routes');
-const roleRoutes = require('./routes/role.routes');
-const userRoutes = require('./routes/user.routes');
-const retryQueueRoutes = require('./routes/retryQueue.routes');
-const whatsappCallbackRoutes = require('./routes/whatsappCallback.routes');
-const voiceCallbackRoutes = require('./routes/voiceCallback.routes');
-const ordifyCallbackRoutes = require('./routes/ordifyCallback.routes');
-const storeServiceRoutes = require('./routes/storeService.routes');
-const webhookRoutes = require('./routes/shopifyWebhook.routes');
-const activityLogRoutes = require('./routes/activityLog.routes');
-const dashboardRoutes = require('./routes/dashboard.routes');
+fastify.register(cors, {
+  origin: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : '*', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  credentials: true,
+});
 
-fastify.register(cors, { origin: '*' });
-fastify.register(authRoutes, { prefix: '/api/auth' });
-fastify.register(menuRoutes, { prefix: '/api/menu' });
-fastify.register(userPermissionRoutes, { prefix: '/api/permission' });
-fastify.register(templateRoutes, { prefix: '/api/template' });
-fastify.register(storeRoutes, { prefix: '/api/store' });
-fastify.register(tagRoutes, { prefix: '/api/tag' });
-fastify.register(roleRoutes, { prefix: '/api/role' });
-fastify.register(userRoutes, { prefix: '/api/user' });
-fastify.register(retryQueueRoutes, { prefix: '/api/retry-queue' });
-fastify.register(whatsappCallbackRoutes, { prefix: '/api/whatsapp' });
-fastify.register(voiceCallbackRoutes, { prefix: '/api/voice' });
-fastify.register(ordifyCallbackRoutes, { prefix: '/api/ordify' });
-fastify.register(storeServiceRoutes, { prefix: '/api/store-service' });
-fastify.register(webhookRoutes, { prefix: '/api/webhook' });
-fastify.register(activityLogRoutes, { prefix: '/api/activity-log' });
-fastify.register(dashboardRoutes, { prefix: '/api/dashboard' });
+fastify.register(require('fastify-raw-body'), {
+  runFirst: true,
+  routes: ['/api/webhook'],
+});
 
-// DB Connection
-sequelize.sync({ alter: true })
-.then(async () => {
-  console.log('✅ Database connected & synced');
-})
-.catch(err => console.error('❌ DB Error:', err));
+fastify.register(rateLimit, {
+  max: parseInt(process.env.RATE_LIMIT_MAX) || 100, 
+  timeWindow: process.env.RATE_LIMIT_WINDOW || '1 minute',
+  errorResponseBuilder: function () {
+    return {
+      success: false,
+      message: 'Too many requests. Please try again later.',
+      statusCode: 429,
+    };
+  },
+});
+
+
+fastify.setErrorHandler((error, request, reply) => {
+  const statusCode = error.statusCode || 500;
+
+  request.log.error({
+    err: error,
+    url: request.url,
+    method: request.method,
+  });
+
+  reply.status(statusCode).send({
+    success: false,
+    message:
+      statusCode === 500
+        ? 'Internal server error' 
+        : error.message,
+    ...(process.env.NODE_ENV !== 'production' && { stack: error.stack }),
+  });
+});
+
+
+fastify.setNotFoundHandler((request, reply) => {
+  reply.status(404).send({
+    success: false,
+    message: `Route ${request.method} ${request.url} not found`,
+  });
+});
+
+
+fastify.get('/health', async (request, reply) => {
+  const dbHealth = await sequelize.testConnection();
+  const isHealthy = dbHealth.status === 'healthy';
+
+  reply.status(isHealthy ? 200 : 503).send({
+    success: isHealthy,
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    memory: {
+      used: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
+      total: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`,
+    },
+    database: dbHealth,
+  });
+});
+
+
+// REGISTER ROUTES
+fastify.register(require('./routes/auth.routes'), { prefix: '/api/auth' });
+fastify.register(require('./routes/menu.routes'), { prefix: '/api/menu' });
+fastify.register(require('./routes/userPermission.routes'), { prefix: '/api/permission' });
+fastify.register(require('./routes/template.routes'), { prefix: '/api/template' });
+fastify.register(require('./routes/store.routes'), { prefix: '/api/store' });
+fastify.register(require('./routes/tag.routes'), { prefix: '/api/tag' });
+fastify.register(require('./routes/role.routes'), { prefix: '/api/role' });
+fastify.register(require('./routes/user.routes'), { prefix: '/api/user' });
+fastify.register(require('./routes/retryQueue.routes'), { prefix: '/api/retry-queue' });
+fastify.register(require('./routes/whatsappCallback.routes'), { prefix: '/api/whatsapp' });
+fastify.register(require('./routes/voiceCallback.routes'), { prefix: '/api/voice' });
+fastify.register(require('./routes/ordifyCallback.routes'), { prefix: '/api/ordify' });
+fastify.register(require('./routes/storeService.routes'), { prefix: '/api/store-service' });
+fastify.register(require('./routes/shopifyWebhook.routes'), { prefix: '/api/webhook' });
+fastify.register(require('./routes/activityLog.routes'), { prefix: '/api/activity-log' });
+fastify.register(require('./routes/dashboard.routes'), { prefix: '/api/dashboard' });
+
+const connectDB = async () => {
+  try {
+    await sequelize.authenticate();
+    console.log('✅ Database connected successfully');
+  } catch (err) {
+    console.error('❌ Database connection failed:', err.message);
+    console.log('🔄 Retrying database connection in 5 seconds...');
+    setTimeout(connectDB, 5000);
+  }
+};
+
+connectDB();
 
 module.exports = fastify;

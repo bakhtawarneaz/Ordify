@@ -3,8 +3,11 @@ const shopifyWebhookService = require('../services/shopifyWebhook.service');
 exports.shopifyWebhook = async (req, reply) => {
   try {
     const topic = req.headers['x-shopify-topic'] || '';
-    const res = await shopifyWebhookService.handleShopifyWebhook(req.body, topic);
-    return reply.code(res.success ? 200 : 400).send(res);
+    reply.code(200).send({ success: true, message: 'Webhook received' });
+    shopifyWebhookService.handleShopifyWebhook(req.body, topic)
+      .catch(err => {
+        console.error(`Webhook processing error [${topic}]:`, err.message);
+      });
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
   }
