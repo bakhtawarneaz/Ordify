@@ -18,14 +18,6 @@ const sequelize = new Sequelize(
       acquire: parseInt(process.env.DB_POOL_ACQUIRE) || 30000,  
       idle: parseInt(process.env.DB_POOL_IDLE) || 10000,        
     },
-    ...(isProduction && {
-      dialectOptions: {
-        ssl: {
-          require: true,
-          rejectUnauthorized: false,
-        },
-      },
-    }),
     retry: {
       max: 3,
       match: [

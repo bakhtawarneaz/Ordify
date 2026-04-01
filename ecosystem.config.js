@@ -6,7 +6,7 @@ module.exports = {
       instances: process.env.NODE_ENV === 'production' ? 'max' : 1,
       exec_mode: process.env.NODE_ENV === 'production' ? 'cluster' : 'fork',
       autorestart: true,
-      watch: process.env.NODE_ENV !== 'production', 
+      watch: false, 
       max_memory_restart: '500M', 
       env: {
         NODE_ENV: 'development',

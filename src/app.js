@@ -110,6 +110,18 @@ fastify.get('/health', async (request, reply) => {
   });
 });
 
+fastify.register(function (instance, opts, done) {
+  instance.addHook('onRequest', (request, reply, done) => {
+    request.log = {
+      info: () => {}, error: () => {}, warn: () => {},
+      fatal: () => {}, trace: () => {}, debug: () => {},
+      child: () => request.log,
+    };
+    done();
+  });
+  instance.register(serverAdapter.registerPlugin());
+  done();
+}, { prefix: '/admin/queues', logLevel: 'silent' });
 
 // REGISTER ROUTES
 fastify.register(require('./routes/auth.routes'), { prefix: '/api/auth' });
@@ -128,7 +140,6 @@ fastify.register(require('./routes/storeService.routes'), { prefix: '/api/store-
 fastify.register(require('./routes/shopifyWebhook.routes'), { prefix: '/api/webhook' });
 fastify.register(require('./routes/activityLog.routes'), { prefix: '/api/activity-log' });
 fastify.register(require('./routes/dashboard.routes'), { prefix: '/api/dashboard' });
-fastify.register(serverAdapter.registerPlugin(), { prefix: '/admin/queues' });
 
 const connectDB = async () => {
   try {
