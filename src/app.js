@@ -23,6 +23,18 @@ const cors = require('@fastify/cors');
 const helmet = require('@fastify/helmet');
 const rateLimit = require('@fastify/rate-limit');
 const sequelize = require('./config/db');
+const { createBullBoard } = require('@bull-board/api');
+const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
+const { FastifyAdapter } = require('@bull-board/fastify');
+const { notificationQueue } = require('./config/queue');
+
+const serverAdapter = new FastifyAdapter();
+serverAdapter.setBasePath('/admin/queues');
+
+createBullBoard({
+  queues: [new BullMQAdapter(notificationQueue)],
+  serverAdapter,
+});
 
 fastify.register(helmet, {
   contentSecurityPolicy: false, 
@@ -116,6 +128,7 @@ fastify.register(require('./routes/storeService.routes'), { prefix: '/api/store-
 fastify.register(require('./routes/shopifyWebhook.routes'), { prefix: '/api/webhook' });
 fastify.register(require('./routes/activityLog.routes'), { prefix: '/api/activity-log' });
 fastify.register(require('./routes/dashboard.routes'), { prefix: '/api/dashboard' });
+fastify.register(serverAdapter.registerPlugin(), { prefix: '/admin/queues' });
 
 const connectDB = async () => {
   try {

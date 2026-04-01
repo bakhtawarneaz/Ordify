@@ -10,6 +10,7 @@ const { handleOrdifySend } = require('../services/ordifyCallback.service');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
 const { getActiveServices } = require('../services/storeService.service');
 const { extractPhoneFromOrder } = require('../utils/phoneHelper');
+const { notificationQueue } = require('../config/queue');
 
 exports.handleShopifyWebhook = async (orderData, topic) => {
   try {
@@ -77,29 +78,57 @@ const handleOrderCreate = async (store, orderData) => {
 
     await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'system', action: 'order_saved', message: 'Order saved successfully' });
 
-    const results = [];
+    const queued = [];
 
     if (store.whatsapp_only) {
-      const whatsappResult = await handleWhatsAppSend(store, orderData);
-      results.push({ service: 'whatsapp', ...whatsappResult });
+      await notificationQueue.add('whatsapp', {
+        type: 'whatsapp',
+        store: { id: store.id, store_name: store.store_name, store_id: store.store_id, store_url: store.store_url, access_token: store.access_token, api_key: store.api_key, post_paid: store.post_paid, pre_paid: store.pre_paid, whatsapp_only: store.whatsapp_only },
+        orderData,
+      }, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      });
+      queued.push('whatsapp');
     }
 
     if (store.voice_only) {
-      const voiceResult = await handleVoiceCall(orderData, store);
-      results.push({ service: 'voice', ...voiceResult });
+      await notificationQueue.add('voice', {
+        type: 'voice',
+        store: { id: store.id, store_name: store.store_name, store_id: store.store_id, store_url: store.store_url, access_token: store.access_token, api_key: store.api_key, campaign_id: store.campaign_id, voice_only: store.voice_only },
+        orderData,
+      }, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      });
+      queued.push('voice');
     }
 
     if (store.ordify_only) {
-      const ordifyResult = await handleOrdifySend(orderData, store);
-      results.push({ service: 'ordify', ...ordifyResult });
+      await notificationQueue.add('ordify', {
+        type: 'ordify',
+        store: { id: store.id, store_name: store.store_name, store_id: store.store_id, store_url: store.store_url, access_token: store.access_token, api_key: store.api_key, sender: store.sender, brand_name: store.brand_name, ordify_only: store.ordify_only },
+        orderData,
+      }, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      });
+      queued.push('ordify');
     }
 
-    if (results.length === 0) {
+    if (queued.length === 0) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'system', action: 'order_created', message: 'Order saved, no services enabled' });
       return { success: true, message: 'Order saved, no services enabled' };
     }
 
-    return { success: true, message: 'Order saved and services triggered', data: results };
+    await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'system', action: 'order_queued', message: `Order saved, ${queued.join(', ')} queued`, details: { queued } });
+    return { success: true, message: `Order saved, ${queued.join(', ')} queued` };
   } catch (error) {
     await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'system', action: 'order_created', message: `Order create failed: ${error.message}`, details: { error: error.message } });
     return { success: false, message: error.message };

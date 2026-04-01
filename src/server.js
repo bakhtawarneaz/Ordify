@@ -1,17 +1,19 @@
 const app = require('./app');
 const sequelize = require('./config/db');
 require('dotenv').config();
-
+require('./workers/notification.worker');
+const { connection } = require('./config/queue');
 const PORT = process.env.PORT || 8080;
 
 const gracefulShutdown = async (signal) => {
   console.log(`\n⚠️  ${signal} received. Starting graceful shutdown...`);
-
   try {
     await app.close();
     console.log('✅ Server closed — no new requests accepted');
     await sequelize.close();
     console.log('✅ Database connections closed');
+    await connection.quit();
+    console.log('✅ Redis connection closed');
     console.log('👋 Shutdown complete. Goodbye!');
     process.exit(0);
   } catch (err) {
