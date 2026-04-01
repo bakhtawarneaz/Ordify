@@ -73,7 +73,6 @@ exports.isServiceActive = async (store_id, service_key) => {
   const service = await StoreService.findOne({
     where: { store_id, service_key, is_active: true },
   });
-
   return !!service;
 };
 
@@ -81,9 +80,7 @@ exports.getActiveServices = async (store_id) => {
   const services = await StoreService.findAll({
     where: { store_id, is_active: true },
   });
-
   const activeKeys = services.map(s => s.service_key);
-
   return {
     isActive: (key) => activeKeys.includes(key),
     activeKeys,
