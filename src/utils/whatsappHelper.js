@@ -22,6 +22,10 @@ const buildParameters = (textParameters, order) => {
   });
   const shippingLine = (order?.shipping_lines || []).find(line => line.code === 'STANDARD DELIVERY');
   const deliveryCharge = shippingLine ? shippingLine.price : '0.00';
+  const fulfillment = order?.fulfillments?.[order.fulfillments.length - 1] || {};
+  const trackingNumber = fulfillment.tracking_number || '';
+  const trackingUrl = fulfillment.tracking_url || '';
+  const trackingCompany = fulfillment.tracking_company || '';
 
   const valueMap = {
     customer_name: customerName,
@@ -46,6 +50,12 @@ const buildParameters = (textParameters, order) => {
     closing_note: 'Happy Shopping',
     outlet_name: vendor,
     city: city,
+    tracking_number: trackingNumber,
+    tracking_link: trackingUrl,
+    tracking_url: trackingUrl,
+    courier: trackingCompany,
+    courier_name: trackingCompany,
+    tracking_company: trackingCompany,
   };
 
   return textParameters.map(param => {
