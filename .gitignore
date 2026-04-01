@@ -5,3 +5,6 @@ node_modules/
 .env
 logs
 pm2-logs
+web.config
+package.json
+package-lock.json
