@@ -40,7 +40,6 @@ const sequelize = new Sequelize(
     timezone: '+05:00', 
     define: {
       timestamps: true,
-      underscored: true, 
     },
   }
 );
