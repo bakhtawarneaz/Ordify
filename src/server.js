@@ -3,6 +3,7 @@ const sequelize = require('./config/db');
 require('dotenv').config();
 require('./workers/notification.worker');
 require('./workers/feedback.worker');
+require('./workers/reattempt.worker');
 const { connection } = require('./config/queue');
 const PORT = process.env.PORT || 8080;
 

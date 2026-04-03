@@ -1,6 +1,8 @@
 const axios = require('axios');
 const WHATSAPP_API_URL = 'https://waba-be-whatsapp.its.com.pk/v1/template/message';
 const { extractPhoneFromOrder } = require('./phoneHelper');
+const { getProductImage } = require('./productImageHelper');
+const { getSetting } = require('../services/storeSetting.service');
 
 const buildParameters = (textParameters, order) => {
   const customerName = `${order?.billing_address?.first_name || ''} ${order?.billing_address?.last_name || ''}`.trim();
@@ -80,6 +82,17 @@ exports.sendWhatsAppMessage = async (order, template, store, phoneNumber = null)
       : template.body_text_parameters || [];
     const parameters = buildParameters(textParameters, order);
 
+    let productImageUrl = null;
+    let productMediaId = null;
+
+    const productImageEnabled = await getSetting(store.id, 'product_image_enabled');
+
+    if (productImageEnabled === 'true') {
+      const imageResult = await getProductImage(store, order, template.wt_api);
+      productImageUrl = imageResult.imageUrl;
+      productMediaId = imageResult.mediaId;
+    }
+
     const payload = {
       clientId: template.client_id,
       template_message_id: template.template_message_id,
@@ -87,13 +100,13 @@ exports.sendWhatsAppMessage = async (order, template, store, phoneNumber = null)
       template_params: {
         ...(template.header_value || template.header_sample_value
           ? {
-              header: {
-                type: 'HEADER',
-                format: template.header_format || 'IMAGE',
-                value: template.header_value || 'Not Available',
-                sampleValue: template.header_sample_value || 'Not Available',
-                ...(template.upload_media_id && { upload_media_id: template.upload_media_id }),
-              },
+            header: {
+              type: 'HEADER',
+              format: template.header_format || 'IMAGE',
+              value: productImageUrl || template.header_value || 'Not Available',
+              sampleValue: template.header_sample_value || 'Not Available',
+              upload_media_id: productMediaId || template.upload_media_id || null,
+            },
             }
           : {}),
         body: {

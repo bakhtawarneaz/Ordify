@@ -18,5 +18,6 @@ connection.on('error', (err) => {
 
 const notificationQueue = new Queue('notifications', { connection });
 const feedbackQueue = new Queue('feedback', { connection });
+const reattemptQueue = new Queue('reattempt', { connection });
 
-module.exports = { connection, notificationQueue, feedbackQueue };
+module.exports = { connection, notificationQueue, feedbackQueue, reattemptQueue };

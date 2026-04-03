@@ -1,35 +1,36 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
-const StoreService = sequelize.define(
-  'StoreService',
+const StoreSetting = sequelize.define(
+  'StoreSetting',
   {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
-
     store_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-
-    service_key: {
-      type: DataTypes.STRING(255),
+    setting_key: {
+      type: DataTypes.STRING,
       allowNull: false,
-      comment: 'order_split, order_delivered, order_paid, order_dispatch, order_tracking',
     },
-
+    setting_value: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     is_active: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
-    tableName: 'store_services',
+    tableName: 'store_settings',
     timestamps: true,
   }
 );
 
-module.exports = StoreService;
+module.exports = StoreSetting;

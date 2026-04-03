@@ -26,13 +26,13 @@ const sequelize = require('./config/db');
 const { createBullBoard } = require('@bull-board/api');
 const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
 const { FastifyAdapter } = require('@bull-board/fastify');
-const { notificationQueue, feedbackQueue } = require('./config/queue');
+const { notificationQueue, feedbackQueue, reattemptQueue } = require('./config/queue');
 
 const serverAdapter = new FastifyAdapter();
 serverAdapter.setBasePath('/admin/queues');
 
 createBullBoard({
-  queues: [new BullMQAdapter(notificationQueue), new BullMQAdapter(feedbackQueue)],
+  queues: [new BullMQAdapter(notificationQueue), new BullMQAdapter(feedbackQueue), new BullMQAdapter(reattemptQueue)],
   serverAdapter,
 });
 
@@ -136,7 +136,7 @@ fastify.register(require('./routes/retryQueue.routes'), { prefix: '/api/retry-qu
 fastify.register(require('./routes/whatsappCallback.routes'), { prefix: '/api/whatsapp' });
 fastify.register(require('./routes/voiceCallback.routes'), { prefix: '/api/voice' });
 fastify.register(require('./routes/ordifyCallback.routes'), { prefix: '/api/ordify' });
-fastify.register(require('./routes/storeService.routes'), { prefix: '/api/store-service' });
+fastify.register(require('./routes/storeSetting.routes'), { prefix: '/api/store-setting' });
 fastify.register(require('./routes/shopifyWebhook.routes'), { prefix: '/api/webhook' });
 fastify.register(require('./routes/activityLog.routes'), { prefix: '/api/activity-log' });
 fastify.register(require('./routes/dashboard.routes'), { prefix: '/api/dashboard' });

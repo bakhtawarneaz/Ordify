@@ -8,6 +8,8 @@ const { hasExistingTag, findAndApplyTag } = require('../utils/tagHelper');
 const { createRetryQueue } = require('../services/retryQueue.service');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
 const { extractPhoneFromOrder } = require('../utils/phoneHelper');
+const { reattemptQueue } = require('../config/queue');
+const { getSetting, isServiceActive } = require('../services/storeSetting.service');
 
 exports.handleWhatsAppSend = async (store, orderData) => {
   try {
@@ -67,6 +69,31 @@ exports.handleWhatsAppSend = async (store, orderData) => {
     await WhatsAppMessageResponse.create({ store_id: store.id, order_id: orderData.id, phone_number: apiResponse.result[0].number, message_id: messageId });
     await createRetryQueue({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'sent' });
     await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'whatsapp_sent', message: `WhatsApp sent to ${phoneNumber}`, details: { phone: phoneNumber, messageId, template_id: template.id } });
+
+    const reattemptActive = await isServiceActive(store.id, 'whatsapp_reattempt');
+    if (reattemptActive) {
+      const msgResponse = await WhatsAppMessageResponse.findOne({
+        where: { store_id: store.id, order_id: orderData.id, message_id: messageId },
+      });
+
+      if (msgResponse) {
+        const delayMinutesSetting = await getSetting(store.id, 'reattempt_delay_minutes');
+        const delayMinutes = parseInt(delayMinutesSetting) || 60;
+        const delayMs = delayMinutes * 60 * 1000;
+
+        await reattemptQueue.add('reattempt-check', {
+          messageResponseId: msgResponse.id,
+        }, {
+          delay: delayMs,
+          attempts: 2,
+          backoff: { type: 'exponential', delay: 30000 },
+          removeOnComplete: 100,
+          removeOnFail: 500,
+        });
+
+        await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'reattempt_scheduled', message: `Reattempt scheduled after ${delayMinutes} minutes` });
+      }
+    }
 
     return { success: true, message: 'WhatsApp message sent' };
   } catch (error) {
@@ -136,6 +163,7 @@ exports.handleWhatsAppCallback = async (callbackData) => {
     const tagResult = await findAndApplyTag(store, messageResponse.order_id, buttonMeaning, buttonChannel, existingTagsString);
 
     if (tagResult.success) {
+      await messageResponse.update({ action_taken: true });
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, order_number: orderNumber, channel: buttonChannel, action: 'tag_added', message: `Tag "${tagResult.tag}" added`, details: { tag: tagResult.tag, meaning: buttonMeaning, button_action: action } });
     } else {
       await logFailed({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, order_number: orderNumber, channel: buttonChannel, action: 'tag_added', message: `Tag failed: ${tagResult.message}`, details: { meaning: buttonMeaning, button_action: action } });
