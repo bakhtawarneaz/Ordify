@@ -1,5 +1,14 @@
 const storeSettingService = require('../services/storeSetting.service');
 
+exports.addServices = async (req, reply) => {
+  try {
+    const res = await storeSettingService.addServices(req.body);
+    return reply.code(res.success ? 200 : 400).send(res);
+  } catch (err) {
+    return reply.code(500).send({ success: false, message: err.message });
+  }
+};
+
 exports.updateServices = async (req, reply) => {
   try {
     const res = await storeSettingService.updateServices(req.body);
@@ -9,10 +18,19 @@ exports.updateServices = async (req, reply) => {
   }
 };
 
-exports.getByStore = async (req, reply) => {
+exports.addSetting = async (req, reply) => {
   try {
-    const res = await storeSettingService.getServicesByStore(req.query);
-    return reply.code(200).send(res);
+    const res = await storeSettingService.addSetting(req.body.store_id, req.body.setting_key, req.body.setting_value);
+    return reply.code(res.success ? 200 : 400).send(res);
+  } catch (err) {
+    return reply.code(500).send({ success: false, message: err.message });
+  }
+};
+
+exports.updateSetting = async (req, reply) => {
+  try {
+    const res = await storeSettingService.updateSetting(req.body.store_id, req.body.setting_key, req.body.setting_value);
+    return reply.code(res.success ? 200 : 400).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
   }
@@ -27,19 +45,19 @@ exports.getSetting = async (req, reply) => {
   }
 };
 
-exports.setSetting = async (req, reply) => {
+exports.deleteSetting = async (req, reply) => {
   try {
-    const res = await storeSettingService.setSetting(req.body.store_id, req.body.setting_key, req.body.setting_value);
-    return reply.code(200).send(res);
+    const res = await storeSettingService.deleteSetting(req.body.store_id, req.body.setting_key);
+    return reply.code(res.success ? 200 : 404).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
   }
 };
 
-exports.deleteSetting = async (req, reply) => {
+exports.getByStore = async (req, reply) => {
   try {
-    const res = await storeSettingService.deleteSetting(req.body.store_id, req.body.setting_key);
-    return reply.code(res.success ? 200 : 404).send(res);
+    const res = await storeSettingService.getServicesByStore(req.query);
+    return reply.code(200).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
   }

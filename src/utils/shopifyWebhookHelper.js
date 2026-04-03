@@ -77,7 +77,7 @@ exports.unregisterWebhook = async (store, topic, webhookUrl) => {
 
 exports.syncWebhooks = async (store, activeServiceKeys, webhookBaseUrl) => {
   try {
-    const webhookUrl = `${webhookBaseUrl}/api/webhook/shopify`;
+    const webhookUrl = `${webhookBaseUrl.replace(/\/+$/, '')}/api/webhook/shopify`;
     const results = [];
 
     const neededTopics = new Set();

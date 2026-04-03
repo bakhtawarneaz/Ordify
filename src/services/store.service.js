@@ -26,11 +26,8 @@ exports.createStore = async (payload) => {
     brand_name: payload.brand_name || null,
     post_paid: payload.post_paid || false,
     pre_paid: payload.pre_paid || false,
-    judgeme_api_token: payload.judgeme_api_token || null,
-    feedback_delay: payload.feedback_delay || null,
-    voice_unanswered_whatsapp: payload.voice_unanswered_whatsapp || false,
-    voice_unanswered: payload.voice_unanswered || false,
     campaign_id: payload.campaign_id || null,
+    client_secret: payload.client_secret || null,
   });
 
   return { success: true, message: 'Store created successfully', data: store };
