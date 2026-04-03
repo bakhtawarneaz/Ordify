@@ -27,7 +27,6 @@ const worker = new Worker('reattempt', async (job) => {
     throw new Error(`Message response not found: ${messageResponseId}`);
   }
 
-  // Agar customer ne already action le liya tou skip
   if (messageResponse.action_taken) {
     console.log(`⏭️ Action already taken for order: ${messageResponse.order_id}`);
     return { success: true, message: 'Action already taken - skipped' };
@@ -38,7 +37,6 @@ const worker = new Worker('reattempt', async (job) => {
     throw new Error(`Store not found: ${messageResponse.store_id}`);
   }
 
-  // Tag check — agar tag lag chuka hai tou action ho chuka hai
   const { hasOurTag } = await hasExistingTag(store, messageResponse.order_id);
 
   if (hasOurTag) {
@@ -48,7 +46,6 @@ const worker = new Worker('reattempt', async (job) => {
     return { success: true, message: 'Tag exists - skipped' };
   }
 
-  // Max attempts check
   const maxAttemptsSetting = await getSetting(store.id, 'reattempt_max_count');
   const maxAttempts = parseInt(maxAttemptsSetting) || 1;
 
@@ -58,7 +55,6 @@ const worker = new Worker('reattempt', async (job) => {
     return { success: true, message: 'Max reattempts reached' };
   }
 
-  // Order data fetch karo
   const order = await Order.findOne({
     where: { order_id: messageResponse.order_id, store_id: store.id },
   });
@@ -67,7 +63,6 @@ const worker = new Worker('reattempt', async (job) => {
     throw new Error(`Order data not found: ${messageResponse.order_id}`);
   }
 
-  // Reattempt template find karo — pehle reattempt specific, phir original
   let template = await Template.findOne({
     where: { store_id: store.id, template_type: 'whatsapp', action: 'reattempt' },
   });
@@ -92,7 +87,6 @@ const worker = new Worker('reattempt', async (job) => {
     throw new Error('Reattempt template not found');
   }
 
-  // WhatsApp bhejo
   const sendResult = await sendWhatsAppMessage(order.order_data, template, store, messageResponse.phone_number);
 
   const apiResponse = sendResult?.data?.data;
@@ -104,7 +98,6 @@ const worker = new Worker('reattempt', async (job) => {
     throw new Error(errorMsg);
   }
 
-  // Update message response
   await messageResponse.update({
     reattempt_count: messageResponse.reattempt_count + 1,
     message_id: newMessageId,
@@ -112,7 +105,6 @@ const worker = new Worker('reattempt', async (job) => {
 
   await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, channel: 'whatsapp', action: 'reattempt_sent', message: `Reattempt ${messageResponse.reattempt_count} sent`, details: { phone: messageResponse.phone_number, messageId: newMessageId, attempt: messageResponse.reattempt_count } });
 
-  // Next reattempt schedule karo agar limit nahi hui
   if (messageResponse.reattempt_count < maxAttempts) {
     const { reattemptQueue } = require('../config/queue');
     const delayMinutesSetting = await getSetting(store.id, 'reattempt_delay_minutes');
