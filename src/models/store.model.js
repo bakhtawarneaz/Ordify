@@ -79,15 +79,14 @@ const Store = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    // judgeme_api_token: {
-    //   type: DataTypes.STRING(255),
-    //   allowNull: true,
-    // },
-
-    // feedback_delay: {
-    //   type: DataTypes.INTEGER,
-    //   allowNull: true,
-    // },
+    feedback_delay_days: {
+      type: DataTypes.INTEGER,
+      defaultValue: 7,
+    },
+    judge_me_api_token: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     campaign_id: {
       type: DataTypes.STRING(255),
       allowNull: true,

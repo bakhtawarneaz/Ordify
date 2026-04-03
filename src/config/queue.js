@@ -17,5 +17,6 @@ connection.on('error', (err) => {
 });
 
 const notificationQueue = new Queue('notifications', { connection });
+const feedbackQueue = new Queue('feedback', { connection });
 
-module.exports = { connection, notificationQueue };
+module.exports = { connection, notificationQueue, feedbackQueue };
