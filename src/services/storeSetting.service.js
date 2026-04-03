@@ -4,7 +4,6 @@ const { syncWebhooks } = require('../utils/shopifyWebhookHelper');
 
 const WEBHOOK_BASE_URL = process.env.WEBHOOK_BASE_URL || 'https://notify.its.com.pk:5090/api/';
 
-// ✅ Service toggle functions
 exports.getActiveServices = async (store_id) => {
   const services = await StoreSetting.findAll({
     where: { store_id, is_active: true },
@@ -83,7 +82,6 @@ exports.getServicesByStore = async (query) => {
   return { success: true, data: settings };
 };
 
-// ✅ Settings functions
 exports.getSetting = async (store_id, setting_key) => {
   const setting = await StoreSetting.findOne({
     where: { store_id, setting_key },

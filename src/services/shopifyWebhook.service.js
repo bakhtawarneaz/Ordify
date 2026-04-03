@@ -203,67 +203,6 @@ const handleOrderFulfilled = async (store, orderData) => {
   }
 };
 
-// const handleOrderFulfilled = async (store, orderData) => {
-//   try {
-//     const fulfillments = orderData.fulfillments || [];
-//     const latestFulfillment = fulfillments[fulfillments.length - 1];
-
-//     if (!latestFulfillment) {
-//       await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_fulfilled', message: 'No fulfillment data found' });
-//       return { success: false, message: 'No fulfillment data found' };
-//     }
-
-//     const itemCount = latestFulfillment.line_items?.length || 0;
-//     const results = [];
-//     const services = await getActiveServices(store.id);
-
-//     const order = await Order.findOne({
-//       where: { store_id: store.id, order_id: orderData.id },
-//     });
-
-//     // Split order service
-//     const splitActive = services.isActive('order_split');
-//     if (splitActive && itemCount > 0) {
-//       if (order?.split_notified) {
-//         await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_split', message: 'Split notification already sent - skipped' });
-//       } else {
-//         const splitResult = await sendEventWhatsApp(store, orderData, 'split_order', itemCount);
-//         results.push({ service: 'order_split', ...splitResult });
-
-//         if (splitResult.success && order) {
-//           await order.update({ split_notified: true });
-//         }
-//       }
-//     }
-
-//     // Dispatch service
-//     const dispatchActive = services.isActive('order_dispatch');
-//     if (dispatchActive) {
-//       if (order?.dispatch_notified) {
-//         await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_dispatch', message: 'Dispatch notification already sent - skipped' });
-//       } else {
-//         const dispatchResult = await sendEventWhatsApp(store, orderData, 'order_dispatch');
-//         results.push({ service: 'order_dispatch', ...dispatchResult });
-
-//         if (dispatchResult.success && order) {
-//           await order.update({ dispatch_notified: true });
-//         }
-//       }
-//     }
-
-//     if (results.length === 0) {
-//       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_fulfilled', message: 'No fulfilled services active for this store' });
-//       return { success: true, message: 'No fulfilled services active for this store' };
-//     }
-
-//     return { success: true, message: 'Fulfilled services triggered', data: results };
-//   } catch (error) {
-//     await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_fulfilled', message: `Fulfilled error: ${error.message}`, details: { error: error.message } });
-//     return { success: false, message: error.message };
-//   }
-// };
-
-
 const handleOrderPaid = async (store, orderData) => {
   try {
     const services = await getActiveServices(store.id);
