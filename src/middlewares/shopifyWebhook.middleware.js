@@ -3,6 +3,11 @@ const Store = require('../models/store.model');
 const { Op } = require('sequelize');
 
 exports.verifyShopifyWebhook = async (req, reply) => {
+
+  if (process.env.NODE_ENV === 'development') {
+    return;
+  }
+  
   try {
     const hmacHeader = req.headers['x-shopify-hmac-sha256'];
     const shopDomain = req.headers['x-shopify-shop-domain'] || '';
