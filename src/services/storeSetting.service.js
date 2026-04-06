@@ -1,8 +1,5 @@
 const StoreSetting = require('../models/storeSetting.model');
 const Store = require('../models/store.model');
-const { syncWebhooks } = require('../utils/shopifyWebhookHelper');
-
-const WEBHOOK_BASE_URL = process.env.WEBHOOK_BASE_URL || 'https://notify.its.com.pk:5090';
 
 
 exports.addServices = async (payload) => {
@@ -38,13 +35,6 @@ exports.addServices = async (payload) => {
     await StoreSetting.create({ store_id, setting_key: service_key, is_active: is_active || false });
     results.push({ service_key, status: 'created' });
   }
-
-  const activeServices = await StoreSetting.findAll({
-    where: { store_id, is_active: true },
-  });
-  const activeKeys = activeServices.map(s => s.setting_key);
-
-  const webhookResult = await syncWebhooks(store, activeKeys, WEBHOOK_BASE_URL);
 
   return {
     success: true,
@@ -87,18 +77,10 @@ exports.updateServices = async (payload) => {
     results.push({ service_key, status: 'updated' });
   }
 
-  const activeServices = await StoreSetting.findAll({
-    where: { store_id, is_active: true },
-  });
-  const activeKeys = activeServices.map(s => s.setting_key);
-
-  const webhookResult = await syncWebhooks(store, activeKeys, WEBHOOK_BASE_URL);
-
   return {
     success: true,
     message: `${results.filter(r => r.status === 'updated').length} services updated`,
     data: results,
-    webhooks: webhookResult,
   };
 };
 
@@ -176,7 +158,7 @@ exports.getActiveServices = async (store_id) => {
 
 exports.isServiceActive = async (store_id, service_key) => {
   const service = await StoreSetting.findOne({
-    where: { store_id, service_key, is_active: true },
+    where: { store_id, setting_key: service_key, is_active: true },
   });
   return !!service;
 };
