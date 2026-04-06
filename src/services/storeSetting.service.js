@@ -45,7 +45,7 @@ exports.addServices = async (payload) => {
   const activeKeys = activeServices.map(s => s.setting_key);
 
   const webhookResult = await syncWebhooks(store, activeKeys, WEBHOOK_BASE_URL);
-  
+
   return {
     success: true,
     message: `${results.filter(r => r.status === 'created').length} services added`,
@@ -162,7 +162,6 @@ exports.deleteSetting = async (store_id, setting_key) => {
   await setting.destroy();
   return { success: true, message: 'Setting deleted' };
 };
-
 
 exports.getActiveServices = async (store_id) => {
   const services = await StoreSetting.findAll({
