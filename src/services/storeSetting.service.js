@@ -39,6 +39,13 @@ exports.addServices = async (payload) => {
     results.push({ service_key, status: 'created' });
   }
 
+  const activeServices = await StoreSetting.findAll({
+    where: { store_id, is_active: true },
+  });
+  const activeKeys = activeServices.map(s => s.setting_key);
+
+  const webhookResult = await syncWebhooks(store, activeKeys, WEBHOOK_BASE_URL);
+  
   return {
     success: true,
     message: `${results.filter(r => r.status === 'created').length} services added`,

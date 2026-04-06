@@ -16,7 +16,7 @@ const getShopifyHeaders = (accessToken) => ({
 exports.getRegisteredWebhooks = async (store) => {
   try {
     const response = await axios.get(
-      `https://${store.store_id}.myshopify.com/admin/api/2023-01/webhooks.json`,
+      `https://${store.store_id}.myshopify.com/admin/api/2026-04/webhooks.json`,
       { headers: getShopifyHeaders(store.access_token) }
     );
     return response.data.webhooks || [];
@@ -36,7 +36,7 @@ exports.registerWebhook = async (store, topic, webhookUrl) => {
     }
 
     const response = await axios.post(
-      `https://${store.store_id}.myshopify.com/admin/api/2023-01/webhooks.json`,
+      `https://${store.store_id}.myshopify.com/admin/api/2026-04/webhooks.json`,
       {
         webhook: {
           topic,
@@ -64,7 +64,7 @@ exports.unregisterWebhook = async (store, topic, webhookUrl) => {
     }
 
     await axios.delete(
-      `https://${store.store_id}.myshopify.com/admin/api/2023-01/webhooks/${webhook.id}.json`,
+      `https://${store.store_id}.myshopify.com/admin/api/2026-04/webhooks/${webhook.id}.json`,
       { headers: getShopifyHeaders(store.access_token) }
     );
 
