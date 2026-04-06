@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
+const Store = require('./store.model');
 
 const StoreSetting = sequelize.define(
   'StoreSetting',
@@ -32,5 +33,7 @@ const StoreSetting = sequelize.define(
     timestamps: true,
   }
 );
+
+StoreSetting.belongsTo(Store, { foreignKey: 'store_id' });
 
 module.exports = StoreSetting;

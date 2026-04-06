@@ -1,26 +1,8 @@
 const storeSettingService = require('../services/storeSetting.service');
 
-exports.addServices = async (req, reply) => {
-  try {
-    const res = await storeSettingService.addServices(req.body);
-    return reply.code(res.success ? 200 : 400).send(res);
-  } catch (err) {
-    return reply.code(500).send({ success: false, message: err.message });
-  }
-};
-
-exports.updateServices = async (req, reply) => {
-  try {
-    const res = await storeSettingService.updateServices(req.body);
-    return reply.code(res.success ? 200 : 400).send(res);
-  } catch (err) {
-    return reply.code(500).send({ success: false, message: err.message });
-  }
-};
-
 exports.addSetting = async (req, reply) => {
   try {
-    const res = await storeSettingService.addSetting(req.body.store_id, req.body.setting_key, req.body.setting_value);
+    const res = await storeSettingService.addSetting(req.body);
     return reply.code(res.success ? 200 : 400).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
@@ -29,17 +11,8 @@ exports.addSetting = async (req, reply) => {
 
 exports.updateSetting = async (req, reply) => {
   try {
-    const res = await storeSettingService.updateSetting(req.body.store_id, req.body.setting_key, req.body.setting_value);
+    const res = await storeSettingService.updateSetting(req.body);
     return reply.code(res.success ? 200 : 400).send(res);
-  } catch (err) {
-    return reply.code(500).send({ success: false, message: err.message });
-  }
-};
-
-exports.getSetting = async (req, reply) => {
-  try {
-    const value = await storeSettingService.getSetting(req.query.store_id, req.query.setting_key);
-    return reply.code(200).send({ success: true, data: value });
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
   }
@@ -54,9 +27,18 @@ exports.deleteSetting = async (req, reply) => {
   }
 };
 
+exports.getSetting = async (req, reply) => {
+  try {
+    const value = await storeSettingService.getSetting(req.query.store_id, req.query.setting_key);
+    return reply.code(200).send({ success: true, data: value });
+  } catch (err) {
+    return reply.code(500).send({ success: false, message: err.message });
+  }
+};
+
 exports.getByStore = async (req, reply) => {
   try {
-    const res = await storeSettingService.getServicesByStore(req.query);
+    const res = await storeSettingService.getByStore(req.query);
     return reply.code(200).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });

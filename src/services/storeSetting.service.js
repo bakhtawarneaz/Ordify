@@ -1,16 +1,12 @@
 const StoreSetting = require('../models/storeSetting.model');
 const Store = require('../models/store.model');
 
+// Add (unified — toggle + setting dono)
+exports.addSetting = async (payload) => {
+  const { store_id, setting_key, setting_value, is_active } = payload;
 
-exports.addServices = async (payload) => {
-  const { store_id, services } = payload;
-
-  if (!store_id) {
-    return { success: false, message: 'store_id is required' };
-  }
-
-  if (!services || !Array.isArray(services) || services.length === 0) {
-    return { success: false, message: 'services array is required' };
+  if (!store_id || !setting_key) {
+    return { success: false, message: 'store_id and setting_key are required' };
   }
 
   const store = await Store.findOne({ where: { id: store_id } });
@@ -18,88 +14,6 @@ exports.addServices = async (payload) => {
     return { success: false, message: 'Store not found' };
   }
 
-  const results = [];
-
-  for (const svc of services) {
-    const { service_key, is_active } = svc;
-
-    const existing = await StoreSetting.findOne({
-      where: { store_id, setting_key: service_key },
-    });
-
-    if (existing) {
-      results.push({ service_key, status: 'already_exists' });
-      continue;
-    }
-
-    await StoreSetting.create({ store_id, setting_key: service_key, is_active: is_active || false });
-    results.push({ service_key, status: 'created' });
-  }
-
-  return {
-    success: true,
-    message: `${results.filter(r => r.status === 'created').length} services added`,
-    data: results,
-  };
-};
-
-exports.updateServices = async (payload) => {
-  const { store_id, services } = payload;
-
-  if (!store_id) {
-    return { success: false, message: 'store_id is required' };
-  }
-
-  if (!services || !Array.isArray(services) || services.length === 0) {
-    return { success: false, message: 'services array is required' };
-  }
-
-  const store = await Store.findOne({ where: { id: store_id } });
-  if (!store) {
-    return { success: false, message: 'Store not found' };
-  }
-
-  const results = [];
-
-  for (const svc of services) {
-    const { service_key, is_active } = svc;
-
-    const existing = await StoreSetting.findOne({
-      where: { store_id, setting_key: service_key },
-    });
-
-    if (!existing) {
-      results.push({ service_key, status: 'not_found' });
-      continue;
-    }
-
-    await existing.update({ is_active });
-    results.push({ service_key, status: 'updated' });
-  }
-
-  return {
-    success: true,
-    message: `${results.filter(r => r.status === 'updated').length} services updated`,
-    data: results,
-  };
-};
-
-exports.getServicesByStore = async (query) => {
-  const where = {};
-
-  if (query.store_id) {
-    where.store_id = query.store_id;
-  }
-
-  const settings = await StoreSetting.findAll({
-    where,
-    order: [['id', 'ASC']],
-  });
-
-  return { success: true, data: settings };
-};
-
-exports.addSetting = async (store_id, setting_key, setting_value) => {
   const existing = await StoreSetting.findOne({
     where: { store_id, setting_key },
   });
@@ -108,11 +22,24 @@ exports.addSetting = async (store_id, setting_key, setting_value) => {
     return { success: false, message: 'Setting already exists' };
   }
 
-  await StoreSetting.create({ store_id, setting_key, setting_value });
-  return { success: true, message: 'Setting created' };
+  const created = await StoreSetting.create({
+    store_id,
+    setting_key,
+    setting_value: setting_value || null,
+    is_active: is_active !== undefined ? is_active : null,
+  });
+
+  return { success: true, message: 'Setting created', data: created };
 };
 
-exports.updateSetting = async (store_id, setting_key, setting_value) => {
+// Update (unified — toggle + setting dono)
+exports.updateSetting = async (payload) => {
+  const { store_id, setting_key, setting_value, is_active } = payload;
+
+  if (!store_id || !setting_key) {
+    return { success: false, message: 'store_id and setting_key are required' };
+  }
+
   const existing = await StoreSetting.findOne({
     where: { store_id, setting_key },
   });
@@ -121,17 +48,15 @@ exports.updateSetting = async (store_id, setting_key, setting_value) => {
     return { success: false, message: 'Setting not found' };
   }
 
-  await existing.update({ setting_value });
-  return { success: true, message: 'Setting updated' };
+  const updateData = {};
+  if (setting_value !== undefined) updateData.setting_value = setting_value;
+  if (is_active !== undefined) updateData.is_active = is_active;
+
+  await existing.update(updateData);
+  return { success: true, message: 'Setting updated', data: existing };
 };
 
-exports.getSetting = async (store_id, setting_key) => {
-  const setting = await StoreSetting.findOne({
-    where: { store_id, setting_key },
-  });
-  return setting?.setting_value || null;
-};
-
+// Delete
 exports.deleteSetting = async (store_id, setting_key) => {
   const setting = await StoreSetting.findOne({
     where: { store_id, setting_key },
@@ -145,6 +70,29 @@ exports.deleteSetting = async (store_id, setting_key) => {
   return { success: true, message: 'Setting deleted' };
 };
 
+// Get single setting value
+exports.getSetting = async (store_id, setting_key) => {
+  const setting = await StoreSetting.findOne({
+    where: { store_id, setting_key },
+  });
+  return setting?.setting_value || null;
+};
+
+// Get all by store
+exports.getByStore = async (query) => {
+  const where = {};
+  if (query.store_id) {
+    where.store_id = query.store_id;
+  }
+  const settings = await StoreSetting.findAll({
+    where,
+    include: [{ model: Store, attributes: ['id', 'store_name', 'store_url'] }],
+    order: [['id', 'ASC']],
+  });
+  return { success: true, data: settings };
+};
+
+// Helper — check service active
 exports.getActiveServices = async (store_id) => {
   const services = await StoreSetting.findAll({
     where: { store_id, is_active: true },
@@ -156,6 +104,7 @@ exports.getActiveServices = async (store_id) => {
   };
 };
 
+// Helper — single service check
 exports.isServiceActive = async (store_id, service_key) => {
   const service = await StoreSetting.findOne({
     where: { store_id, setting_key: service_key, is_active: true },
