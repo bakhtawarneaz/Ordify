@@ -86,8 +86,8 @@ const handleOrderCreate = async (store, orderData) => {
       }, {
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: 100,
-        removeOnFail: 500,
+        removeOnComplete: { age: 86400 },
+        removeOnFail: { age: 172800 },
       });
       queued.push('whatsapp');
     }
@@ -100,8 +100,8 @@ const handleOrderCreate = async (store, orderData) => {
       }, {
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: 100,
-        removeOnFail: 500,
+        removeOnComplete: { age: 86400 },
+        removeOnFail: { age: 172800 },
       });
       queued.push('voice');
     }
@@ -114,8 +114,8 @@ const handleOrderCreate = async (store, orderData) => {
       }, {
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: 100,
-        removeOnFail: 500,
+        removeOnComplete: { age: 86400 },
+        removeOnFail: { age: 172800 },
       });
       queued.push('ordify');
     }
