@@ -86,8 +86,8 @@ exports.getTemplateById = async (id) => {
 exports.getAllTemplates = async (query) => {
   const where = {};
 
-  if (query.template_type) {
-    where.template_type = query.template_type;
+  if (query.template_id) {
+    where.template_message_id = query.template_id;
   }
 
   if (query.store_id) {
