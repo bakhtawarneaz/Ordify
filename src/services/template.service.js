@@ -1,4 +1,8 @@
 const Template = require('../models/template.model');
+const Store = require('../models/store.model');
+const { Op } = require('sequelize');
+const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
+
 
 exports.createTemplate = async (payload) => {
   const {
@@ -100,4 +104,53 @@ exports.getAllTemplates = async (query) => {
   });
 
   return { success: true, data: templates };
+};
+
+exports.fetchTemplates = async (query) => {
+  const { store_id, template_id, action, template_type } = query;
+
+  const where = {};
+
+  if (store_id) where.store_id = store_id;
+  if (template_id) where.template_message_id = template_id;
+  if (action) where.action = { [Op.iLike]: `%${action}%` };
+  if (template_type) where.template_type = template_type;
+
+  const { page: pageNum, limit: pageSize, offset } = getPagination(query);
+
+  const { count, rows } = await Template.findAndCountAll({
+    where,
+    include: [{ model: Store, attributes: ['id', 'store_name', 'store_url'] }],
+    order: [['id', 'ASC']],
+    limit: pageSize,
+    offset,
+  });
+
+  const formatted = rows.map((t) => ({
+    id: t.id,
+    store_name: t.Store?.store_name || 'N/A',
+    store_id: t.store_id,
+    client_id: t.client_id,
+    action: t.action || 'N/A',
+    template_message_id: t.template_message_id,
+    template_type: t.template_type,
+    payment_type: t.payment_type,
+    header_format: t.header_format,
+    header_value: t.header_value,
+    header_sample_value: t.header_sample_value,
+    upload_media_id: t.upload_media_id,
+    body_text: t.body_text,
+    body_parameters: t.body_text_parameters,
+    buttons: t.buttons,
+    download_attachment: t.download_attachment,
+    wt_api: t.wt_api,
+    created_at: t.dt,
+    updated_at: t.dtu,
+  }));
+
+  return {
+    success: true,
+    data: formatted,
+    pagination: getPaginationResponse(count, pageNum, pageSize),
+  };
 };

@@ -44,3 +44,12 @@ exports.getAll = async (req, reply) => {
     return reply.code(500).send({ success: false, message: err.message });
   }
 };
+
+exports.fetchTemplates = async (req, reply) => {
+  try {
+    const res = await templateService.fetchTemplates(req.query);
+    return reply.code(res.success ? 200 : 400).send(res);
+  } catch (err) {
+    return reply.code(500).send({ success: false, message: err.message });
+  }
+};

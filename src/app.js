@@ -141,6 +141,7 @@ fastify.register(require('./routes/shopifyWebhook.routes'), { prefix: '/api/webh
 fastify.register(require('./routes/activityLog.routes'), { prefix: '/api/activity-log' });
 fastify.register(require('./routes/dashboard.routes'), { prefix: '/api/dashboard' });
 fastify.register(require('./routes/feedback.routes'), { prefix: '/api/feedback' });
+fastify.register(require('./routes/order.routes'), { prefix: '/api/order' });
 
 const connectDB = async () => {
   try {
