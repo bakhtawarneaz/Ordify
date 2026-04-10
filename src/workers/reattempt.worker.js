@@ -6,7 +6,6 @@ const Order = require('../models/order.model');
 const Template = require('../models/template.model');
 const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
 const { hasExistingTag } = require('../utils/tagHelper');
-const { getSetting } = require('../services/storeSetting.service');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
 
 const connection = new IORedis({
@@ -46,7 +45,7 @@ const worker = new Worker('reattempt', async (job) => {
     return { success: true, message: 'Tag exists - skipped' };
   }
 
-  const maxAttemptsSetting = await getSetting(store.id, 'reattempt_max_count');
+  const maxAttemptsSetting = store.reattempt_max_count || 3;
   const maxAttempts = parseInt(maxAttemptsSetting) || 1;
 
   if (messageResponse.reattempt_count >= maxAttempts) {
@@ -107,7 +106,7 @@ const worker = new Worker('reattempt', async (job) => {
 
   if (messageResponse.reattempt_count < maxAttempts) {
     const { reattemptQueue } = require('../config/queue');
-    const delayMinutesSetting = await getSetting(store.id, 'reattempt_delay_minutes');
+    const delayMinutesSetting = store.reattempt_delay_minutes || 60;
     const delayMinutes = parseInt(delayMinutesSetting) || 60;
     const delayMs = delayMinutes * 60 * 1000;
 

@@ -81,7 +81,7 @@ const handleOrderCreate = async (store, orderData) => {
     if (store.whatsapp_only) {
       await notificationQueue.add('whatsapp', {
         type: 'whatsapp',
-        store: { id: store.id, store_name: store.store_name, store_id: store.store_id, store_url: store.store_url, access_token: store.access_token, api_key: store.api_key, post_paid: store.post_paid, pre_paid: store.pre_paid, whatsapp_only: store.whatsapp_only },
+        store: { id: store.id, store_name: store.store_name, store_id: store.store_id, store_url: store.store_url, access_token: store.access_token, api_key: store.api_key, post_paid: store.post_paid, pre_paid: store.pre_paid, whatsapp_only: store.whatsapp_only, whatsapp_trigger_tag: store.whatsapp_trigger_tag, feedback_delay_days: store.feedback_delay_days, judge_me_api_token: store.judge_me_api_token, reattempt_max_count: store.reattempt_max_count, reattempt_delay_minutes: store.reattempt_delay_minutes, },
         orderData,
       }, {
         attempts: 3,

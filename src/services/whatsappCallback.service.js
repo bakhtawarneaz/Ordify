@@ -9,7 +9,7 @@ const { createRetryQueue } = require('../services/retryQueue.service');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
 const { extractPhoneFromOrder } = require('../utils/phoneHelper');
 const { reattemptQueue } = require('../config/queue');
-const { getSetting, isServiceActive } = require('../services/storeSetting.service');
+const { isServiceActive } = require('../services/storeSetting.service');
 
 exports.handleWhatsAppSend = async (store, orderData) => {
   try {
@@ -25,6 +25,18 @@ exports.handleWhatsAppSend = async (store, orderData) => {
     if (store.pre_paid && !store.post_paid && isCOD) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'whatsapp_skipped', message: 'COD order - WhatsApp skipped for prepaid only store' });
       return { success: true, message: 'COD order - WhatsApp skipped for prepaid only store' };
+    }
+
+    const triggerTagActive = await isServiceActive(store.id, 'whatsapp_trigger_tag');
+    if (triggerTagActive) {
+      const triggerTag = store.whatsapp_trigger_tag;
+      if (triggerTag) {
+        const orderTags = (orderData.tags || '').toLowerCase().split(',').map(t => t.trim());
+        if (!orderTags.includes(triggerTag.toLowerCase().trim())) {
+          await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'whatsapp_skipped', message: `Trigger tag "${triggerTag}" not found - WhatsApp skipped` });
+          return { success: true, message: `Trigger tag "${triggerTag}" not found - WhatsApp skipped` };
+        }
+      }
     }
 
     const paymentType = isCOD ? 'post_paid' : 'pre_paid';
@@ -77,7 +89,7 @@ exports.handleWhatsAppSend = async (store, orderData) => {
       });
 
       if (msgResponse) {
-        const delayMinutesSetting = await getSetting(store.id, 'reattempt_delay_minutes');
+        const delayMinutesSetting = store.reattempt_delay_minutes || 60;
         const delayMinutes = parseInt(delayMinutesSetting) || 60;
         const delayMs = delayMinutes * 60 * 1000;
 

@@ -2,7 +2,7 @@ const axios = require('axios');
 const WHATSAPP_API_URL = 'https://waba-be-whatsapp.its.com.pk/v1/template/message';
 const { extractPhoneFromOrder } = require('./phoneHelper');
 const { getProductImage } = require('./productImageHelper');
-const { getSetting } = require('../services/storeSetting.service');
+const { isServiceActive } = require('../services/storeSetting.service');
 
 const buildParameters = (textParameters, order) => {
   const customerName = `${order?.billing_address?.first_name || ''} ${order?.billing_address?.last_name || ''}`.trim();
@@ -85,9 +85,9 @@ exports.sendWhatsAppMessage = async (order, template, store, phoneNumber = null)
     let productImageUrl = null;
     let productMediaId = null;
 
-    const productImageEnabled = await getSetting(store.id, 'product_image_enabled');
+    const productImageEnabled = await isServiceActive(store.id, 'product_image_enabled');
 
-    if (productImageEnabled === 'true') {
+    if (productImageEnabled) {
       const imageResult = await getProductImage(store, order, template.wt_api);
       productImageUrl = imageResult.imageUrl;
       productMediaId = imageResult.mediaId;

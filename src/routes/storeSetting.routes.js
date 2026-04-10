@@ -6,7 +6,7 @@ async function storeSettingRoutes(fastify) {
   fastify.post('/add', { preHandler: [authMiddleware, canCreate('store_setting')] }, storeSettingController.addSetting);
   fastify.post('/update', { preHandler: [authMiddleware, canEdit('store_setting')] }, storeSettingController.updateSetting);
   fastify.post('/delete', { preHandler: [authMiddleware, canDelete('store_setting')] }, storeSettingController.deleteSetting);
-  fastify.get('/get', { preHandler: [authMiddleware, canView('store_setting')] }, storeSettingController.getSetting);
+  fastify.post('/bulk-add', { preHandler: [authMiddleware, canCreate('store_setting')] }, storeSettingController.bulkAddSettings);
   fastify.get('/all', { preHandler: [authMiddleware, canView('store_setting')] }, storeSettingController.getByStore);
 }
 

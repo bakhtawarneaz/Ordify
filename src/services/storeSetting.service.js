@@ -2,7 +2,7 @@ const StoreSetting = require('../models/storeSetting.model');
 const Store = require('../models/store.model');
 
 exports.addSetting = async (payload) => {
-  const { store_id, setting_key, setting_value, is_active } = payload;
+  const { store_id, setting_key, is_active } = payload;
 
   if (!store_id || !setting_key) {
     return { success: false, message: 'store_id and setting_key are required' };
@@ -24,15 +24,14 @@ exports.addSetting = async (payload) => {
   const created = await StoreSetting.create({
     store_id,
     setting_key,
-    setting_value: setting_value || null,
-    is_active: is_active !== undefined ? is_active : null,
+    is_active: is_active !== undefined ? is_active : false,
   });
 
   return { success: true, message: 'Setting created', data: created };
 };
 
 exports.updateSetting = async (payload) => {
-  const { store_id, setting_key, setting_value, is_active } = payload;
+  const { store_id, setting_key, is_active } = payload;
 
   if (!store_id || !setting_key) {
     return { success: false, message: 'store_id and setting_key are required' };
@@ -46,11 +45,7 @@ exports.updateSetting = async (payload) => {
     return { success: false, message: 'Setting not found' };
   }
 
-  const updateData = {};
-  if (setting_value !== undefined) updateData.setting_value = setting_value;
-  if (is_active !== undefined) updateData.is_active = is_active;
-
-  await existing.update(updateData);
+  await existing.update({ is_active });
   return { success: true, message: 'Setting updated', data: existing };
 };
 
@@ -67,11 +62,42 @@ exports.deleteSetting = async (store_id, setting_key) => {
   return { success: true, message: 'Setting deleted' };
 };
 
-exports.getSetting = async (store_id, setting_key) => {
-  const setting = await StoreSetting.findOne({
-    where: { store_id, setting_key },
-  });
-  return setting?.setting_value || null;
+exports.bulkAddSettings = async (payload) => {
+  const { store_id, settings } = payload;
+
+  if (!store_id || !settings || !Array.isArray(settings) || settings.length === 0) {
+    return { success: false, message: 'store_id and settings array are required' };
+  }
+
+  const store = await Store.findOne({ where: { id: store_id } });
+  if (!store) return { success: false, message: 'Store not found' };
+
+  const results = [];
+
+  for (const item of settings) {
+    const existing = await StoreSetting.findOne({
+      where: { store_id, setting_key: item.setting_key },
+    });
+
+    if (existing) {
+      results.push({ setting_key: item.setting_key, status: 'already_exists' });
+      continue;
+    }
+
+    await StoreSetting.create({
+      store_id,
+      setting_key: item.setting_key,
+      is_active: item.is_active !== undefined ? item.is_active : false,
+    });
+
+    results.push({ setting_key: item.setting_key, status: 'created' });
+  }
+
+  return {
+    success: true,
+    message: `${results.filter(r => r.status === 'created').length} settings added`,
+    data: results,
+  };
 };
 
 exports.getByStore = async (query) => {

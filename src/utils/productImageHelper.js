@@ -14,7 +14,6 @@ exports.getProductImage = async (store, orderData, wtApiToken) => {
       return { imageUrl: null, mediaId: null };
     }
 
-    // Step 1: Shopify se product image fetch karo
     const imgRes = await axios.get(
       `https://${store.store_id}.myshopify.com/admin/api/2024-01/products/${productId}/images.json`,
       {
@@ -29,7 +28,6 @@ exports.getProductImage = async (store, orderData, wtApiToken) => {
       return { imageUrl: null, mediaId: null };
     }
 
-    // Step 2: Image download karo as JPG
     const url = new URL(productImageUrl);
     url.searchParams.set('format', 'jpg');
     const jpgUrl = url.toString();
@@ -39,7 +37,6 @@ exports.getProductImage = async (store, orderData, wtApiToken) => {
       timeout: 10000,
     });
 
-    // Step 3: WhatsApp API pe upload karo
     const formData = new FormData();
     formData.append('template_upload', 'true');
     formData.append('file', Buffer.from(imageResponse.data), {

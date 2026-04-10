@@ -83,6 +83,29 @@ const Store = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    feedback_delay_days: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 7,
+    },
+    judge_me_api_token: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    reattempt_max_count: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 3,
+    },
+    reattempt_delay_minutes: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 60,
+    },
+    whatsapp_trigger_tag: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
   },
   {
     tableName: 'stores',

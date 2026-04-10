@@ -18,14 +18,10 @@ const StoreSetting = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    setting_value: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
     is_active: {
       type: DataTypes.BOOLEAN,
-      allowNull: true,
-      defaultValue: null,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

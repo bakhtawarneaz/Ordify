@@ -4,7 +4,6 @@ const { feedbackQueue } = require('../config/queue');
 const { extractPhoneFromOrder } = require('../utils/phoneHelper');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
 const axios = require('axios');
-const { getSetting } = require('../services/storeSetting.service');
 
 exports.handleFeedbackOnFulfilled = async (store, orderData) => {
   try {
@@ -24,7 +23,7 @@ exports.handleFeedbackOnFulfilled = async (store, orderData) => {
     const productIds = lineItems.map(item => item.product_id).join(',');
     const productNames = lineItems.map(item => item.name).join(',');
 
-    const delayDaysSetting = await getSetting(store.id, 'feedback_delay_days');
+    const delayDaysSetting = store.feedback_delay_days || 7;
     const delayDays = parseInt(delayDaysSetting) || 7;
     const delayMs = delayDays * 24 * 60 * 60 * 1000;
     const sendFeedbackAt = new Date(Date.now() + delayMs);
@@ -82,7 +81,7 @@ exports.handleFeedbackResponse = async (callbackData) => {
 
     const store = await Store.findByPk(fulfilledOrder.store_id);
 
-    const judgeMeToken = await getSetting(store.id, 'judge_me_api_token');
+    const judgeMeToken = store.judge_me_api_token || null;
     if (!store || !judgeMeToken) {
       await logFailed({ store_id: fulfilledOrder.store_id, store_name: null, order_id: fulfilledOrder.order_id, order_number: fulfilledOrder.order_number, channel: 'whatsapp', action: 'feedback_received', message: 'Judge.me credentials not configured' });
       return { success: false, message: 'Judge.me credentials not configured' };

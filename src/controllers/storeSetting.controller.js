@@ -27,10 +27,10 @@ exports.deleteSetting = async (req, reply) => {
   }
 };
 
-exports.getSetting = async (req, reply) => {
+exports.bulkAddSettings = async (req, reply) => {
   try {
-    const value = await storeSettingService.getSetting(req.query.store_id, req.query.setting_key);
-    return reply.code(200).send({ success: true, data: value });
+    const res = await storeSettingService.bulkAddSettings(req.body);
+    return reply.code(res.success ? 200 : 400).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
   }
