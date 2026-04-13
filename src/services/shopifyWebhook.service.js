@@ -137,16 +137,17 @@ const handleOrderFulfilled = async (store, orderData) => {
   try {
     const fulfillments = orderData.fulfillments || [];
     const latestFulfillment = fulfillments[fulfillments.length - 1];
-
     const services = await getActiveServices(store.id);
     const results = [];
 
+    // FeedBack
     const feedbackActive = services.isActive('order_feedback');
     if (feedbackActive) {
       const feedbackResult = await handleFeedbackOnFulfilled(store, orderData);
       results.push({ service: 'order_feedback', ...feedbackResult });
     }
 
+    // Split order service
     if (!latestFulfillment) {
       if (results.length > 0) {
         return { success: true, message: 'Fulfilled services triggered', data: results };
@@ -154,14 +155,10 @@ const handleOrderFulfilled = async (store, orderData) => {
       await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_fulfilled', message: 'No fulfillment data found' });
       return { success: false, message: 'No fulfillment data found' };
     }
-
     const itemCount = latestFulfillment.line_items?.length || 0;
-
     const order = await Order.findOne({
       where: { store_id: store.id, order_id: orderData.id },
     });
-
-    // Split order service
     const splitActive = services.isActive('order_split');
     if (splitActive && itemCount > 0) {
       if (order?.split_notified) {
