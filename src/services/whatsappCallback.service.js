@@ -42,12 +42,12 @@ exports.handleWhatsAppSend = async (store, orderData) => {
     const paymentType = isCOD ? 'post_paid' : 'pre_paid';
 
     let template = await Template.findOne({
-      where: { store_id: store.id, template_type: 'whatsapp', payment_type: paymentType },
+      where: { store_id: store.id, template_type: 'whatsapp', payment_type: paymentType, action: { [Op.or]: ['order_confirmation', null] } },
     });
-
+    
     if (!template) {
       template = await Template.findOne({
-        where: { store_id: store.id, template_type: 'whatsapp', payment_type: 'both' },
+        where: { store_id: store.id, template_type: 'whatsapp', payment_type: 'both', action: { [Op.or]: ['order_confirmation', null] } },
       });
     }
 
