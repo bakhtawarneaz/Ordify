@@ -90,6 +90,12 @@ const Template = sequelize.define(
       defaultValue: 'both',
       comment: 'post_paid, pre_paid, or both',
     },
+    tracking_name: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: null,
+      comment: 'Courier name(s) for tracking templates - comma separated (e.g. "TCS, Leopards") or "ALL" for fallback',
+    },
   },
   {
     tableName: 'templates',

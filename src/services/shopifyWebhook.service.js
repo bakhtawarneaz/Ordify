@@ -307,6 +307,41 @@ const sendEventWhatsApp = async (store, orderData, action, itemCount = null) => 
           where: { store_id: store.id, template_type: 'whatsapp', action: 'split_order' },
         });
       }
+    } else if (action === 'order_tracking') {
+      const fulfillments = orderData.fulfillments || [];
+      const latestFulfillment = fulfillments[fulfillments.length - 1];
+      const trackingCompany = latestFulfillment?.tracking_company || '';
+      if (trackingCompany) {
+        const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const trackingNamePattern = `(^|,)\\s*${escapeRegExp(trackingCompany)}\\s*(,|$)`;
+        template = await Template.findOne({
+          where: {
+            store_id: store.id,
+            template_type: 'whatsapp',
+            action: 'order_tracking',
+            tracking_name: { [Op.regexp]: trackingNamePattern },
+          },
+        });
+      }
+      if (!template) {
+        template = await Template.findOne({
+          where: {
+            store_id: store.id,
+            template_type: 'whatsapp',
+            action: 'order_tracking',
+            tracking_name: 'ALL',
+          },
+        });
+      }
+      if (!template) {
+        template = await Template.findOne({
+          where: {
+            store_id: store.id,
+            template_type: 'whatsapp',
+            action: 'order_tracking',
+          },
+        });
+      }
     } else {
       template = await Template.findOne({
         where: { store_id: store.id, template_type: 'whatsapp', action },
