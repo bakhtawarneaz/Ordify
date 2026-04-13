@@ -191,6 +191,25 @@ const handleOrderFulfilled = async (store, orderData) => {
       }
     }
 
+    // Tracking service
+    const trackingActive = services.isActive('order_tracking');
+    if (trackingActive) {
+      if (order?.tracking_notified) {
+        await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_tracking', message: 'Tracking notification already sent - skipped' });
+      } else {
+        const hasTracking = fulfillments.some(f => f.tracking_number);
+ 
+        if (hasTracking) {
+          const trackingResult = await sendEventWhatsApp(store, orderData, 'order_tracking');
+          results.push({ service: 'order_tracking', ...trackingResult });
+ 
+          if (trackingResult.success && order) {
+            await order.update({ tracking_notified: true });
+          }
+        }
+      }
+    }
+
     if (results.length === 0) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_fulfilled', message: 'No fulfilled services active for this store' });
       return { success: true, message: 'No fulfilled services active for this store' };
@@ -260,26 +279,6 @@ const handleOrderUpdated = async (store, orderData) => {
 
           if (deliveredResult.success && order) {
             await order.update({ delivered_notified: true });
-          }
-        }
-      }
-    }
-
-    // Tracking service
-    const trackingActive = services.isActive('order_tracking');
-    if (trackingActive) {
-      if (order?.tracking_notified) {
-        await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_tracking', message: 'Tracking notification already sent - skipped' });
-      } else {
-        const fulfillments = orderData.fulfillments || [];
-        const hasTracking = fulfillments.some(f => f.tracking_number);
-
-        if (hasTracking) {
-          const trackingResult = await sendEventWhatsApp(store, orderData, 'order_tracking');
-          results.push({ service: 'order_tracking', ...trackingResult });
-
-          if (trackingResult.success && order) {
-            await order.update({ tracking_notified: true });
           }
         }
       }
