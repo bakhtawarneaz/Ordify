@@ -70,29 +70,42 @@ const buildParameters = (textParameters, order) => {
   });
 };
 
+const buildButtonValue = (dynamicField, order, store) => {
+  const fulfillment = order?.fulfillments?.[order.fulfillments.length - 1] || {};
+  const buttonValueMap = {
+    tracking_number: fulfillment.tracking_number || '',
+    tracking_link: fulfillment.tracking_url || '',
+    tracking_url: fulfillment.tracking_url || '',
+    order_id: `${order?.id || ''}`,
+    order_number: order?.name || order?.order_number || '',
+    store_order: `${store.store_id}/${order?.id}`,
+  };
+  return buttonValueMap[dynamicField] || '';
+};
+
 exports.sendWhatsAppMessage = async (order, template, store, phoneNumber = null) => {
   try {
     let supportedNumber = phoneNumber;
     if (!supportedNumber) {
       supportedNumber = extractPhoneFromOrder(order);
     }
-
+ 
     const textParameters = typeof template.body_text_parameters === 'string'
       ? JSON.parse(template.body_text_parameters || '[]')
       : template.body_text_parameters || [];
     const parameters = buildParameters(textParameters, order);
-
+ 
     let productImageUrl = null;
     let productMediaId = null;
-
+ 
     const productImageEnabled = await isServiceActive(store.id, 'product_image_enabled');
-
+ 
     if (productImageEnabled) {
       const imageResult = await getProductImage(store, order, template.wt_api);
       productImageUrl = imageResult.imageUrl;
       productMediaId = imageResult.mediaId;
     }
-
+ 
     const payload = {
       clientId: template.client_id,
       template_message_id: template.template_message_id,
@@ -115,19 +128,31 @@ exports.sendWhatsAppMessage = async (order, template, store, phoneNumber = null)
           parameters,
         },
         ...(template.buttons && template.buttons.length > 0 && {
-          buttons: template.buttons.map(btn => ({
-            text: btn.text,
-            sub_type: btn.sub_type,
-            ...(btn.sub_type === 'URL' && {
-              url: btn.url,
-              value: `${store.store_id}/${order.id}`,
-              sampleValue: btn.sampleValue || '',
-            }),
-          })),
+          buttons: template.buttons.map(btn => {
+            if (btn.dynamicField) {
+              return {
+                url: btn.url,
+                text: btn.text,
+                sub_type: btn.sub_type,
+                value: buildButtonValue(btn.dynamicField, order, store),
+                type: btn.type,
+                sampleValue: btn.sampleValue || '',
+              };
+            }
+            return {
+              text: btn.text,
+              sub_type: btn.sub_type,
+              ...(btn.sub_type === 'URL' && {
+                url: btn.url,
+                value: `${store.store_id}/${order.id}`,
+                sampleValue: btn.sampleValue || '',
+              }),
+            };
+          }),
         }),
       },
     };
-
+ 
     const response = await axios.post(WHATSAPP_API_URL, payload, {
       headers: {
         accept: 'application/json',

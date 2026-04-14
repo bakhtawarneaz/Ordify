@@ -20,6 +20,8 @@ exports.createTemplate = async (payload) => {
     template_type,
     buttons,
     download_attachment,
+    tracking_name,
+    payment_type
   } = payload;
 
   if (!store_id || !template_type) {
@@ -45,6 +47,8 @@ exports.createTemplate = async (payload) => {
     template_type,
     buttons: buttons || null,
     download_attachment: download_attachment || false,
+    tracking_name: tracking_name || false,
+    payment_type: payment_type || null
   });
 
   return { success: true, message: 'Template created successfully', data: template };
