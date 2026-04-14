@@ -3,8 +3,8 @@ module.exports = {
     {
       name: 'notify',
       script: './src/server.js',
-      instances: process.env.NODE_ENV === 'production' ? 'max' : 1,
-      exec_mode: process.env.NODE_ENV === 'production' ? 'cluster' : 'fork',
+      instances: 3,
+      exec_mode: 'cluster',
       autorestart: true,
       watch: false, 
       max_memory_restart: '500M', 
