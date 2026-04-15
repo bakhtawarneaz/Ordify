@@ -4,7 +4,7 @@ const AbandonedCartStoreConfig = require('../models/abandonedCartStoreConfig.mod
 const AbandonedCartMessageLog = require('../models/abandonedCartMessageLog.model');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
 const { scheduleFirstReminder, cancelPendingReminders } = require('../utils/abandonedCartHelper');
-const { extractPhoneFromOrder, formatPhoneNumber } = require('../utils/phoneHelper');
+const { extractPhoneFromOrder } = require('../utils/phoneHelper');
 
 
 exports.handleCheckoutWebhook = async (store, checkoutData) => {
