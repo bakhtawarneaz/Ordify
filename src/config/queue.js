@@ -19,5 +19,14 @@ connection.on('error', (err) => {
 const notificationQueue = new Queue('notifications', { connection });
 const feedbackQueue = new Queue('feedback', { connection });
 const reattemptQueue = new Queue('reattempt', { connection });
+const abandonedCartReminderQueue = new Queue('abandoned-cart-reminder', { connection });
+const abandonedCartSyncQueue = new Queue('abandoned-cart-sync', { connection });
 
-module.exports = { connection, notificationQueue, feedbackQueue, reattemptQueue };
+module.exports = {
+  connection,
+  notificationQueue,
+  feedbackQueue,
+  reattemptQueue,
+  abandonedCartReminderQueue,
+  abandonedCartSyncQueue,
+};

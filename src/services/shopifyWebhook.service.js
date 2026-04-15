@@ -9,6 +9,7 @@ const { getActiveServices } = require('../services/storeSetting.service');
 const { extractPhoneFromOrder } = require('../utils/phoneHelper');
 const { notificationQueue } = require('../config/queue');
 const { handleFeedbackOnFulfilled } = require('../services/feedback.service');
+const { handleCheckoutWebhook, handleCartRecovery } = require('../services/abandonedCart.service');
 
 exports.handleShopifyWebhook = async (orderData, topic) => {
   try {
@@ -44,6 +45,10 @@ exports.handleShopifyWebhook = async (orderData, topic) => {
       case 'orders/updated':
         return await handleOrderUpdated(store, orderData);
 
+      case 'checkouts/create':
+      case 'checkouts/update':
+        return await handleCheckoutWebhook(store, orderData);
+
       default:
         await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'system', action: 'webhook_received', message: `Unknown webhook topic: ${topic}`, details: { topic } });
         return { success: false, message: `Unknown webhook topic: ${topic}` };
@@ -76,6 +81,8 @@ const handleOrderCreate = async (store, orderData) => {
 
     await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'system', action: 'order_saved', message: 'Order saved successfully' });
 
+    await handleCartRecovery(store, orderData);
+    
     const queued = [];
 
     if (store.whatsapp_only) {

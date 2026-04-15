@@ -26,13 +26,25 @@ const sequelize = require('./config/db');
 const { createBullBoard } = require('@bull-board/api');
 const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
 const { FastifyAdapter } = require('@bull-board/fastify');
-const { notificationQueue, feedbackQueue, reattemptQueue } = require('./config/queue');
+const {
+  notificationQueue,
+  feedbackQueue,
+  reattemptQueue,
+  abandonedCartReminderQueue,
+  abandonedCartSyncQueue,
+} = require('./config/queue');
 
 const serverAdapter = new FastifyAdapter();
 serverAdapter.setBasePath('/admin/queues');
 
 createBullBoard({
-  queues: [new BullMQAdapter(notificationQueue), new BullMQAdapter(feedbackQueue), new BullMQAdapter(reattemptQueue)],
+  queues: [
+    new BullMQAdapter(notificationQueue),
+    new BullMQAdapter(feedbackQueue),
+    new BullMQAdapter(reattemptQueue),
+    new BullMQAdapter(abandonedCartReminderQueue),
+    new BullMQAdapter(abandonedCartSyncQueue),
+  ],
   serverAdapter,
 });
 
@@ -142,6 +154,7 @@ fastify.register(require('./routes/activityLog.routes'), { prefix: '/api/activit
 fastify.register(require('./routes/dashboard.routes'), { prefix: '/api/dashboard' });
 fastify.register(require('./routes/feedback.routes'), { prefix: '/api/feedback' });
 fastify.register(require('./routes/order.routes'), { prefix: '/api/order' });
+fastify.register(require('./routes/abandonedCart.routes'), { prefix: '/api/abandoned-cart' });
 
 const connectDB = async () => {
   try {
