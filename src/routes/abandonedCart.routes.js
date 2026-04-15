@@ -10,7 +10,7 @@ async function abandonedCartRoutes(fastify) {
   // ---- Template ----
   fastify.post('/template/create', { preHandler: [authMiddleware, canCreate('abandoned_cart')] }, templateController.create);
   fastify.put('/template/update/:id', { preHandler: [authMiddleware, canEdit('abandoned_cart')] }, templateController.update);
-  fastify.delete('/template/delete/:id', { preHandler: [authMiddleware, canDelete('abandoned_cart')] }, templateController.deleteTemplate);
+  fastify.delete('/template/delete/:id', { preHandler: [authMiddleware, canDelete('abandoned_cart')] }, templateController.delete);
   fastify.get('/template/get/:id', { preHandler: [authMiddleware] }, templateController.getOne);
   fastify.get('/template/all', { preHandler: [authMiddleware, canView('abandoned_cart')] }, templateController.getAll);
 
