@@ -1,5 +1,4 @@
 const Store = require('../models/store.model');
-const Template = require('../models/template.model');
 const { sendVoiceCall } = require('../utils/voiceHelper');
 const { hasExistingTag } = require('../utils/tagHelper');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
