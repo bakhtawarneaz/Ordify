@@ -49,7 +49,7 @@ exports.handleFeedbackOnFulfilled = async (store, orderData) => {
     }, {
       delay: delayMs,
       attempts: 3,
-      backoff: { type: 'exponential', delay: 60000 },
+      backoff: { type: 'exponential', delay: 60000 }, 
       removeOnComplete: { age: 86400 },
       removeOnFail: { age: 172800 },
     });
