@@ -4,12 +4,13 @@ const Template = require('../models/template.model');
 const WhatsAppMessageResponse = require('../models/whatsappMessageResponse.model');
 const Order = require('../models/order.model');
 const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
-const { hasExistingTag, findAndApplyTag } = require('../utils/tagHelper');
+const { hasExistingTag } = require('../utils/tagHelper');
 const { createRetryQueue } = require('../services/retryQueue.service');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
 const { extractPhoneFromOrder } = require('../utils/phoneHelper');
 const { reattemptQueue } = require('../config/queue');
 const { isServiceActive } = require('../services/storeSetting.service');
+const { handlePostCallbackActions } = require('../utils/orderActionHelper');
 
 exports.handleWhatsAppSend = async (store, orderData) => {
   try {
@@ -17,12 +18,15 @@ exports.handleWhatsAppSend = async (store, orderData) => {
     const isCOD = orderData.payment_gateway_names?.includes('Cash on Delivery (COD)');
     const phoneNumber = extractPhoneFromOrder(orderData);
 
-    if (store.post_paid && !store.pre_paid && !isCOD) {
+    const postPaidActive = await isServiceActive(store.id, 'post_paid');
+    const prePaidActive = await isServiceActive(store.id, 'pre_paid');
+
+    if (postPaidActive && !prePaidActive && !isCOD) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'whatsapp_skipped', message: 'Not COD - WhatsApp skipped' });
       return { success: true, message: 'Not COD - WhatsApp skipped' };
     }
 
-    if (store.pre_paid && !store.post_paid && isCOD) {
+    if (prePaidActive && !postPaidActive && isCOD) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'whatsapp_skipped', message: 'COD order - WhatsApp skipped for prepaid only store' });
       return { success: true, message: 'COD order - WhatsApp skipped for prepaid only store' };
     }
@@ -172,16 +176,14 @@ exports.handleWhatsAppCallback = async (callbackData) => {
       return { success: true, message: 'Order already tagged' };
     }
 
-    const tagResult = await findAndApplyTag(store, messageResponse.order_id, buttonMeaning, buttonChannel, existingTagsString);
+    const actionResults = await handlePostCallbackActions(store, messageResponse.order_id, buttonMeaning, buttonChannel, existingTagsString, { message_id, button_action: action });
 
-    if (tagResult.success) {
+    if (actionResults.tag && actionResults.tag.success && !actionResults.tag.skipped) {
       await messageResponse.update({ action_taken: true });
-      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, order_number: orderNumber, channel: buttonChannel, action: 'tag_added', message: `Tag "${tagResult.tag}" added`, details: { tag: tagResult.tag, meaning: buttonMeaning, button_action: action } });
-    } else {
-      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, order_number: orderNumber, channel: buttonChannel, action: 'tag_added', message: `Tag failed: ${tagResult.message}`, details: { meaning: buttonMeaning, button_action: action } });
     }
 
-    return tagResult;
+    return { success: true, message: 'Callback processed', data: actionResults };
+
   } catch (error) {
     console.error('Error in handleWhatsAppCallback:', error.message);
     await logFailed({ store_id: null, store_name: null, order_id: null, channel: 'whatsapp', action: 'whatsapp_callback', message: `Unexpected error: ${error.message}`, details: { error: error.message } });

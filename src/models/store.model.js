@@ -45,35 +45,9 @@ const Store = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
-
-    whatsapp_only: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-
-    voice_only: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-
-    ordify_only: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-
     brand_name: {
       type: DataTypes.STRING(255),
       allowNull: true,
-    },
-
-    post_paid: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-
-    pre_paid: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
     },
     client_secret: {
       type: DataTypes.STRING,

@@ -1,14 +1,17 @@
 const Store = require('../models/store.model');
 const Order = require('../models/order.model');
 const { sendOrdify } = require('../utils/ordifyHelper');
-const { hasExistingTag, findAndApplyTag } = require('../utils/tagHelper');
+const { hasExistingTag } = require('../utils/tagHelper');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
 const { sendUnansweredWhatsApp } = require('../utils/unansweredHelper');
+const { isServiceActive } = require('../services/storeSetting.service');
+const { handlePostCallbackActions } = require('../utils/orderActionHelper');
 
 exports.handleOrdifySend = async (orderData, store) => {
   try {
 
-    if (!store.ordify_only) {
+    const ordifyActive = await isServiceActive(store.id, 'ordify_only');
+    if (!ordifyActive) {
       return { success: false, message: 'Ordify not enabled for this store' };
     }
 
@@ -56,8 +59,13 @@ exports.handleOrdifyCallback = async (callbackData) => {
     const action = status?.trim() || null;
 
     if (!action) {
-      const unansweredResult = await sendUnansweredWhatsApp(store, orderIdNum, 'ordify');
-      return unansweredResult; 
+      const unansweredActive = await isServiceActive(store.id, 'unanswered_whatsapp');
+      if (unansweredActive) {
+        const unansweredResult = await sendUnansweredWhatsApp(store, orderIdNum, 'ordify');
+        return unansweredResult;
+      }
+      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderIdNum, channel: 'ordify', action: 'unanswered_skipped', message: 'Unanswered WhatsApp not enabled for this store' });
+      return { success: true, message: 'Unanswered WhatsApp not enabled' };
     }
 
     const { hasOurTag, existingTagsString } = await hasExistingTag(store, orderIdNum);
@@ -83,15 +91,9 @@ exports.handleOrdifyCallback = async (callbackData) => {
       return { success: false, message: 'Invalid action' };
     }
 
-    const tagResult = await findAndApplyTag(store, orderIdNum, meaning, 'ordify', existingTagsString);
+    const actionResults = await handlePostCallbackActions(store, orderIdNum, meaning, 'ordify', existingTagsString, { status: action });
+    return { success: true, message: 'Ordify callback processed', data: actionResults };
 
-    if (tagResult.success) {
-      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderIdNum, order_number: orderNumber, channel: 'ordify', action: 'tag_added', message: `Tag "${tagResult.tag}" added via ordify`, details: { tag: tagResult.tag, meaning, status: action } });
-    } else {
-      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderIdNum, order_number: orderNumber, channel: 'ordify', action: 'tag_added', message: `Tag failed: ${tagResult.message}`, details: { meaning, status: action } });
-    }
-
-    return tagResult;
   } catch (error) {
     console.error('Error in handleOrdifyCallback:', error.message);
     await logFailed({ store_id: null, store_name: null, order_id: null, channel: 'ordify', action: 'ordify_callback', message: `Unexpected error: ${error.message}`, details: { error: error.message } });

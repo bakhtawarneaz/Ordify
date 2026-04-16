@@ -1,16 +1,18 @@
 const Store = require('../models/store.model');
 const Template = require('../models/template.model');
-const WhatsAppMessageResponse = require('../models/whatsappMessageResponse.model');
 const { sendVoiceCall } = require('../utils/voiceHelper');
-const { hasExistingTag, findAndApplyTag } = require('../utils/tagHelper');
+const { hasExistingTag } = require('../utils/tagHelper');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
 const Order = require('../models/order.model');
 const { sendUnansweredWhatsApp } = require('../utils/unansweredHelper');
-
+const { isServiceActive } = require('../services/storeSetting.service');
+const { handlePostCallbackActions } = require('../utils/orderActionHelper');
 
 exports.handleVoiceCall = async (orderData, store) => {
   try {
-    if (!store.voice_only) {
+
+    const voiceActive = await isServiceActive(store.id, 'voice_only');
+    if (!voiceActive) {
       return { success: false, message: 'Voice not enabled for this store' };
     }
 
@@ -59,8 +61,13 @@ exports.handleVoiceCallback = async (callbackData) => {
     const action = userinput?.trim() || null;
 
     if (!action) {
-      const unansweredResult = await sendUnansweredWhatsApp(store, orderIdNum, 'voice');
-      return unansweredResult; 
+      const unansweredActive = await isServiceActive(store.id, 'unanswered_whatsapp');
+      if (unansweredActive) {
+        const unansweredResult = await sendUnansweredWhatsApp(store, orderIdNum, 'voice');
+        return unansweredResult;
+      }
+      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderIdNum, channel: 'voice', action: 'unanswered_skipped', message: 'Unanswered WhatsApp not enabled for this store' });
+      return { success: true, message: 'Unanswered WhatsApp not enabled' };
     }
 
     const { hasOurTag, existingTagsString } = await hasExistingTag(store, orderIdNum);
@@ -86,15 +93,9 @@ exports.handleVoiceCallback = async (callbackData) => {
       return { success: false, message: 'Invalid action' };
     }
 
-    const tagResult = await findAndApplyTag(store, orderIdNum, meaning, 'voice', existingTagsString);
+    const actionResults = await handlePostCallbackActions(store, orderIdNum, meaning, 'voice', existingTagsString, { userinput: action });
+    return { success: true, message: 'Voice callback processed', data: actionResults };
 
-    if (tagResult.success) {
-      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderIdNum, order_number: orderNumber, channel: 'voice', action: 'tag_added', message: `Tag "${tagResult.tag}" added via voice`, details: { tag: tagResult.tag, meaning, userinput: action } });
-    } else {
-      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderIdNum, order_number: orderNumber, channel: 'voice', action: 'tag_added', message: `Tag failed: ${tagResult.message}`, details: { meaning, userinput: action } });
-    }
-
-    return tagResult;
   } catch (error) {
     console.error('Error in handleVoiceCallback:', error.message);
     await logFailed({ store_id: null, store_name: null, order_id: null, channel: 'voice', action: 'voice_callback', message: `Unexpected error: ${error.message}`, details: { error: error.message } });

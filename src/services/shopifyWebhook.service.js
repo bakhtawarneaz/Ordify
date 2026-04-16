@@ -5,7 +5,7 @@ const Template = require('../models/template.model');
 const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
 const { createRetryQueue } = require('../services/retryQueue.service');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
-const { getActiveServices } = require('../services/storeSetting.service');
+const { getActiveServices, isServiceActive } = require('../services/storeSetting.service');
 const { extractPhoneFromOrder } = require('../utils/phoneHelper');
 const { notificationQueue } = require('../config/queue');
 const { handleFeedbackOnFulfilled } = require('../services/feedback.service');
@@ -82,13 +82,26 @@ const handleOrderCreate = async (store, orderData) => {
     await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'system', action: 'order_saved', message: 'Order saved successfully' });
 
     await handleCartRecovery(store, orderData);
-    
+
     const queued = [];
 
-    if (store.whatsapp_only) {
+    const whatsappActive = await isServiceActive(store.id, 'whatsapp_only');
+    if (whatsappActive) {
       await notificationQueue.add('whatsapp', {
         type: 'whatsapp',
-        store: { id: store.id, store_name: store.store_name, store_id: store.store_id, store_url: store.store_url, access_token: store.access_token, api_key: store.api_key, post_paid: store.post_paid, pre_paid: store.pre_paid, whatsapp_only: store.whatsapp_only, whatsapp_trigger_tag: store.whatsapp_trigger_tag, feedback_delay_days: store.feedback_delay_days, judge_me_api_token: store.judge_me_api_token, reattempt_max_count: store.reattempt_max_count, reattempt_delay_minutes: store.reattempt_delay_minutes, },
+        store: {
+          id: store.id,
+          store_name: store.store_name,
+          store_id: store.store_id,
+          store_url: store.store_url,
+          access_token: store.access_token,
+          api_key: store.api_key,
+          whatsapp_trigger_tag: store.whatsapp_trigger_tag,
+          feedback_delay_days: store.feedback_delay_days,
+          judge_me_api_token: store.judge_me_api_token,
+          reattempt_max_count: store.reattempt_max_count,
+          reattempt_delay_minutes: store.reattempt_delay_minutes,
+        },
         orderData,
       }, {
         attempts: 3,
@@ -99,10 +112,19 @@ const handleOrderCreate = async (store, orderData) => {
       queued.push('whatsapp');
     }
 
-    if (store.voice_only) {
+    const voiceActive = await isServiceActive(store.id, 'voice_only');
+    if (voiceActive) {
       await notificationQueue.add('voice', {
         type: 'voice',
-        store: { id: store.id, store_name: store.store_name, store_id: store.store_id, store_url: store.store_url, access_token: store.access_token, api_key: store.api_key, campaign_id: store.campaign_id, voice_only: store.voice_only },
+        store: {
+          id: store.id,
+          store_name: store.store_name,
+          store_id: store.store_id,
+          store_url: store.store_url,
+          access_token: store.access_token,
+          api_key: store.api_key,
+          campaign_id: store.campaign_id,
+        },
         orderData,
       }, {
         attempts: 3,
@@ -113,10 +135,20 @@ const handleOrderCreate = async (store, orderData) => {
       queued.push('voice');
     }
 
-    if (store.ordify_only) {
+    const ordifyActive = await isServiceActive(store.id, 'ordify_only');
+    if (ordifyActive) {
       await notificationQueue.add('ordify', {
         type: 'ordify',
-        store: { id: store.id, store_name: store.store_name, store_id: store.store_id, store_url: store.store_url, access_token: store.access_token, api_key: store.api_key, sender: store.sender, brand_name: store.brand_name, ordify_only: store.ordify_only },
+        store: {
+          id: store.id,
+          store_name: store.store_name,
+          store_id: store.store_id,
+          store_url: store.store_url,
+          access_token: store.access_token,
+          api_key: store.api_key,
+          sender: store.sender,
+          brand_name: store.brand_name,
+        },
         orderData,
       }, {
         attempts: 3,
