@@ -20,12 +20,7 @@ exports.createStore = async (payload) => {
     access_token: payload.access_token || null,
     api_key: payload.api_key || null,
     status: payload.status !== undefined ? payload.status : true,
-    whatsapp_only: payload.whatsapp_only || false,
-    voice_only: payload.voice_only || false,
-    ordify_only: payload.ordify_only || false,
     brand_name: payload.brand_name || null,
-    post_paid: payload.post_paid || false,
-    pre_paid: payload.pre_paid || false,
     campaign_id: payload.campaign_id || null,
     client_secret: payload.client_secret || null,
   });
