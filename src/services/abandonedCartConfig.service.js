@@ -2,6 +2,7 @@ const AbandonedCartStoreConfig = require('../models/abandonedCartStoreConfig.mod
 const AbandonedCartTemplate = require('../models/abandonedCartTemplate.model');
 const Store = require('../models/store.model');
 const { logSuccess } = require('../utils/loggerHelper');
+const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
 const DEFAULT_REMINDERS = [
   { reminder_number: 1, enabled: false, delay_minutes: 30, template_id: null, discount_code: null, product_image: 'first_in_cart' },
@@ -9,37 +10,39 @@ const DEFAULT_REMINDERS = [
   { reminder_number: 3, enabled: false, delay_minutes: 1440, template_id: null, discount_code: null, product_image: 'first_in_cart' },
 ];
 
-exports.getConfig = async (storeId) => {
-  const store = await Store.findByPk(storeId);
-  if (!store) {
-    return { success: false, message: 'Store not found' };
-  }
+exports.getConfigs = async (query) => {
+  const { store_id } = query;
+  const { page: pageNum, limit: pageSize, offset } = getPagination(query);
 
-  let config = await AbandonedCartStoreConfig.findOne({ where: { store_id: storeId } });
+  const where = {};
+  if (store_id) where.store_id = store_id;
 
-  if (!config) {
-    return {
-      success: true,
-      data: {
-        store_id: parseInt(storeId),
-        is_enabled: false,
-        expiry_days: 30,
-        reminders: DEFAULT_REMINDERS,
-        is_new: true,
-      },
-    };
-  }
+  const { count, rows } = await AbandonedCartStoreConfig.findAndCountAll({
+    where,
+    include: [{ model: Store, attributes: ['id', 'store_name', 'store_url'] }],
+    order: [['id', 'DESC']],
+    limit: pageSize,
+    offset,
+  });
 
-  return { success: true, data: config };
+  return {
+    success: true,
+    data: rows,
+    pagination: getPaginationResponse(count, pageNum, pageSize),
+  };
 };
 
-exports.saveConfig = async (storeId, payload) => {
-  const store = await Store.findByPk(storeId);
+exports.saveConfig = async (payload) => {
+  const { store_id, is_enabled, expiry_days, reminders } = payload;
+
+  if (!store_id) {
+    return { success: false, message: 'store_id is required' };
+  }
+
+  const store = await Store.findByPk(store_id);
   if (!store) {
     return { success: false, message: 'Store not found' };
   }
-
-  const { is_enabled, expiry_days, reminders } = payload;
 
   if (reminders) {
     for (const reminder of reminders) {
@@ -51,7 +54,7 @@ exports.saveConfig = async (storeId, payload) => {
         if (!template) {
           return { success: false, message: `Reminder #${reminder.reminder_number}: template_id ${reminder.template_id} not found` };
         }
-        if (template.store_id !== parseInt(storeId)) {
+        if (template.store_id !== parseInt(store_id)) {
           return { success: false, message: `Reminder #${reminder.reminder_number}: template belongs to different store` };
         }
       }
@@ -61,7 +64,7 @@ exports.saveConfig = async (storeId, payload) => {
     }
   }
 
-  let config = await AbandonedCartStoreConfig.findOne({ where: { store_id: storeId } });
+  let config = await AbandonedCartStoreConfig.findOne({ where: { store_id } });
 
   if (config) {
     await config.update({
@@ -71,7 +74,7 @@ exports.saveConfig = async (storeId, payload) => {
     });
   } else {
     config = await AbandonedCartStoreConfig.create({
-      store_id: storeId,
+      store_id,
       is_enabled: is_enabled || false,
       expiry_days: expiry_days || 30,
       reminders: reminders || DEFAULT_REMINDERS,

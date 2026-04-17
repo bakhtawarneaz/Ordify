@@ -1,9 +1,9 @@
 const service = require('../services/abandonedCartConfig.service');
 
-exports.getConfig = async (req, reply) => {
+exports.getConfigs = async (req, reply) => {
   try {
-    const res = await service.getConfig(req.params.store_id);
-    return reply.code(res.success ? 200 : 404).send(res);
+    const res = await service.getConfigs(req.query || {});
+    return reply.code(200).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
   }
@@ -11,7 +11,7 @@ exports.getConfig = async (req, reply) => {
 
 exports.saveConfig = async (req, reply) => {
   try {
-    const res = await service.saveConfig(req.params.store_id, req.body);
+    const res = await service.saveConfig(req.body);
     return reply.code(res.success ? 200 : 400).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });

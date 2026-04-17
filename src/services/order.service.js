@@ -6,7 +6,7 @@ const { getPagination, getPaginationResponse } = require('../utils/paginationHel
 const sequelize = require('../config/db');
 
 exports.fetchOrders = async (query) => {
-    const { store_id, order_number, order_id, tag, status, date_from, date_to, page, limit } = query;
+    const { store_id, order_number, order_id, tag, status, date_from, date_to } = query;
   
     const where = {};
   
@@ -16,7 +16,7 @@ exports.fetchOrders = async (query) => {
   
     if (order_id) {
       where.order_id = order_id;
-    }
+    } 
   
     if (order_number) {
       where.order_number = { [Op.iLike]: `%${order_number}%` };

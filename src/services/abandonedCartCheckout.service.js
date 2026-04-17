@@ -5,20 +5,31 @@ const Store = require('../models/store.model');
 const { sendAbandonedCartWhatsApp } = require('../utils/abandonedCartHelper');
 const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
-exports.getCheckouts = async (storeId, query) => {
-  const { status } = query;
+exports.getCheckouts = async (query) => {
+  const { status, store_id } = query;
   const { page: pageNum, limit: pageSize, offset } = getPagination(query);
 
-  const where = { store_id: storeId };
-  if (status) where.status = status;
+  const where = {};
+  if (store_id) where.store_id = store_id;
+
+  const totalCheckouts = await AbandonedCheckout.count({ where });
+  const pendingCount = await AbandonedCheckout.count({ where: { ...where, status: 'pending' } });
+  const recoveredCount = await AbandonedCheckout.count({ where: { ...where, status: 'recovered' } });
+  const recoveryRate = totalCheckouts > 0 ? ((recoveredCount / totalCheckouts) * 100).toFixed(1) : '0.0';
+
+  const listWhere = { ...where };
+  if (status) listWhere.status = status;
 
   const { count, rows } = await AbandonedCheckout.findAndCountAll({
-    where,
+    where: listWhere,
     attributes: [
       'id', 'shopify_checkout_id', 'customer_name', 'customer_phone',
       'customer_email', 'cart_total', 'currency', 'status', 'source',
       'reminders_sent', 'last_reminder_at', 'recovered_at',
       'recovered_order_id', 'recovered_order_total', 'dt',
+    ],
+    include: [
+      { model: Store, attributes: ['id', 'store_name'] },
     ],
     order: [['dt', 'DESC']],
     limit: pageSize,
@@ -27,6 +38,12 @@ exports.getCheckouts = async (storeId, query) => {
 
   return {
     success: true,
+    stats: {
+      total: totalCheckouts,
+      pending: pendingCount,
+      recovered: recoveredCount,
+      recovery_rate: recoveryRate,
+    },
     data: rows,
     pagination: getPaginationResponse(count, pageNum, pageSize),
   };

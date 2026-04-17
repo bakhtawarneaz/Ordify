@@ -5,11 +5,11 @@ exports.getPagination = (query) => {
     return { page, limit, offset };
   };
   
-  exports.getPaginationResponse = (total, page, limit) => {
+exports.getPaginationResponse = (total, page, limit) => {
     return {
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
     };
-  };
+};
