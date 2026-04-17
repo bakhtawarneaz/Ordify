@@ -293,14 +293,17 @@ const handleOrderPaid = async (store, orderData) => {
 
 const handleOrderUpdated = async (store, orderData) => {
   try {
-    const results = [];
-    const services = await getActiveServices(store.id);
-
     const order = await Order.findOne({
       where: { store_id: store.id, order_id: orderData.id },
     });
 
-    // Delivered service
+    if (order) {
+      await order.update({ order_data: orderData });
+    }
+
+    const results = [];
+    const services = await getActiveServices(store.id);
+
     const deliveredActive = services.isActive('order_delivered');
     if (deliveredActive) {
       if (order?.delivered_notified) {
@@ -320,12 +323,11 @@ const handleOrderUpdated = async (store, orderData) => {
       }
     }
 
-    if (results.length === 0) {
-      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_updated', message: 'No updated services active or triggered' });
-      return { success: true, message: 'No updated services active or triggered' };
+    if (results.length > 0) {
+      return { success: true, message: 'Updated services triggered', data: results };
     }
 
-    return { success: true, message: 'Updated services triggered', data: results };
+    return { success: true, message: 'Order data synced' };
   } catch (error) {
     await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderData?.id, order_number: orderData?.name, channel: 'whatsapp', action: 'order_updated', message: `Order updated error: ${error.message}`, details: { error: error.message } });
     return { success: false, message: error.message };

@@ -5,28 +5,23 @@ const { sendSessionWhatsApp } = require('./sessionHelper');
 const { findAndApplyTag } = require('./tagHelper');
 
 exports.handlePostCallbackActions = async (store, orderId, meaning, channel, existingTagsString, extraLog = {}) => {
-  const results = {
-    tag: null,
-    shopify: null,
-    session: null,
-  };
+  const results = {};
 
-  // Tagging 
   const taggingActive = await isServiceActive(store.id, 'tagging');
   if (taggingActive) {
     const tagResult = await findAndApplyTag(store, orderId, meaning, channel, existingTagsString);
     if (tagResult.success) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: 'tag_added', message: `Tag "${tagResult.tag}" added`, details: { tag: tagResult.tag, meaning, ...extraLog } });
+      results.tag = { success: true, message: `Tag "${tagResult.tag}" added` };
     } else {
       await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: 'tag_added', message: `Tag failed: ${tagResult.message}`, details: { meaning, ...extraLog } });
+      results.tag = { success: false, message: tagResult.message };
     }
-    results.tag = tagResult;
   } else {
     await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: 'tag_skipped', message: 'Tagging not enabled for this store' });
-    results.tag = { success: true, skipped: true };
+    results.tag = { success: true, message: 'Tagging not enabled for this store' };
   }
 
-  //  Shopify order action
   const shopifyActionActive = await isServiceActive(store.id, 'shopify_order_action');
   if (shopifyActionActive) {
     if (meaning === 'confirm') {
@@ -36,7 +31,7 @@ exports.handlePostCallbackActions = async (store, orderId, meaning, channel, exi
       } else {
         await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: 'shopify_order_confirmed', message: `Shopify confirm failed: ${result.message}` });
       }
-      results.shopify = result;
+      results.shopify = { success: result.success, message: result.message };
     } else if (meaning === 'cancel') {
       const result = await cancelShopifyOrder(store, orderId);
       if (result.success) {
@@ -44,15 +39,15 @@ exports.handlePostCallbackActions = async (store, orderId, meaning, channel, exi
       } else {
         await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: 'shopify_order_cancelled', message: `Shopify cancel failed: ${result.message}` });
       }
-      results.shopify = result;
+      results.shopify = { success: result.success, message: result.message };
     }
-  } else {
-    results.shopify = { success: true, skipped: true };
   }
 
-  // Session template WhatsApp 
-  const sessionResult = await sendSessionWhatsApp(store, orderId, meaning, channel);
-  results.session = sessionResult;
+  const sessionEnabled = await isServiceActive(store.id, 'session_template');
+  if (sessionEnabled) {
+    const sessionResult = await sendSessionWhatsApp(store, orderId, meaning, channel);
+    results.session = { success: sessionResult.success, message: sessionResult.message };
+  }
 
   return results;
 };
