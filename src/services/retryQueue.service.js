@@ -5,6 +5,7 @@ const Order = require('../models/order.model');
 const Template = require('../models/template.model');
 const WhatsAppMessageResponse = require('../models/whatsappMessageResponse.model');
 const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
+const { logSuccess, logFailed } = require('../utils/loggerHelper');
 
 
 exports.createRetryQueue = async ({ store_id, order_id, template_id, phone_number, status, error_message }) => {
@@ -51,7 +52,6 @@ exports.getAllRetryQueue = async (query) => {
   return { success: true, data: logs };
 };
 
-
 exports.retrySingle = async (logId) => {
   const log = await RetryQueue.findByPk(logId);
 
@@ -59,55 +59,113 @@ exports.retrySingle = async (logId) => {
     return { success: false, message: 'Log not found' };
   }
 
-  if (log.status === 'sent') {
-    return { success: false, message: 'Message already sent successfully' };
-  }
-
-  if (log.retry_count >= log.max_retries) {
-    return { success: false, message: 'Max retries reached' };
-  }
-
   const store = await Store.findOne({ where: { id: log.store_id } });
+
   if (!store) {
+    await logFailed({
+      store_id: log.store_id,
+      store_name: null,
+      order_id: log.order_id,
+      channel: 'whatsapp',
+      action: 'retry',
+      message: 'Store not found',
+      details: { log_id: logId }
+    });
     return { success: false, message: 'Store not found' };
   }
 
-  const order = await Order.findOne({ where: { order_id: log.order_id, store_id: log.store_id } });
+  const order = await Order.findOne({
+    where: { order_id: log.order_id, store_id: log.store_id }
+  });
+
   if (!order) {
+    await logFailed({
+      store_id: store.id,
+      store_name: store.store_name,
+      order_id: log.order_id,
+      channel: 'whatsapp',
+      action: 'retry',
+      message: 'Order not found',
+      details: { log_id: logId }
+    });
     return { success: false, message: 'Order not found' };
   }
 
   const template = await Template.findByPk(log.template_id);
+
   if (!template) {
+    await logFailed({
+      store_id: store.id,
+      store_name: store.store_name,
+      order_id: log.order_id,
+      channel: 'whatsapp',
+      action: 'retry',
+      message: 'Template not found',
+      details: { log_id: logId }
+    });
     return { success: false, message: 'Template not found' };
   }
 
   try {
-    const sendResult = await sendWhatsAppMessage(order.order_data, template, store, log.phone_number);
+    const sendResult = await sendWhatsAppMessage(
+      order.order_data,
+      template,
+      store,
+      log.phone_number
+    );
 
+    // ❌ Network / Token error
     if (!sendResult || sendResult.success === false) {
+      const errorMsg = sendResult?.error || 'Failed to send';
+
       await log.update({
         status: 'failed',
         retry_count: log.retry_count + 1,
-        error_message: sendResult?.error || 'Failed to send',
+        error_message: errorMsg,
       });
+
+      await logFailed({
+        store_id: store.id,
+        store_name: store.store_name,
+        order_id: log.order_id,
+        order_number: order.order_number,
+        channel: 'whatsapp',
+        action: 'retry_failed',
+        message: `Retry failed for ${log.phone_number}`,
+        details: { error: errorMsg, log_id: logId }
+      });
+
       return { success: false, message: 'Retry failed', data: log };
     }
 
-    // Check WhatsApp API response
     const apiResponse = sendResult?.data?.data;
     const messageId = apiResponse?.result?.[0]?.messageId;
 
+    // ❌ API error
     if (!messageId) {
+      const errorMsg = apiResponse?.errorMessage || 'WhatsApp API error';
+
       await log.update({
         status: 'failed',
         retry_count: log.retry_count + 1,
-        error_message: apiResponse?.errorMessage || 'WhatsApp API error',
+        error_message: errorMsg,
       });
-      return { success: false, message: apiResponse?.errorMessage || 'Retry failed', data: log };
+
+      await logFailed({
+        store_id: store.id,
+        store_name: store.store_name,
+        order_id: log.order_id,
+        order_number: order.order_number,
+        channel: 'whatsapp',
+        action: 'retry_failed',
+        message: `API error for ${log.phone_number}`,
+        details: { error: errorMsg, log_id: logId }
+      });
+
+      return { success: false, message: errorMsg, data: log };
     }
 
-   // Success
+    // ✅ SUCCESS
     await WhatsAppMessageResponse.create({
       store_id: store.id,
       order_id: log.order_id,
@@ -121,51 +179,103 @@ exports.retrySingle = async (logId) => {
       error_message: null,
     });
 
-    return { success: true, message: 'Retry successful, message sent', data: log };
+    await logSuccess({
+      store_id: store.id,
+      store_name: store.store_name,
+      order_id: log.order_id,
+      order_number: order.order_number,
+      channel: 'whatsapp',
+      action: 'retry_success',
+      message: `Retry successful for ${log.phone_number}`,
+      details: { messageId, log_id: logId }
+    });
+
+    return { success: true, message: 'Retry successful', data: log };
+
   } catch (error) {
     await log.update({
       status: 'failed',
       retry_count: log.retry_count + 1,
       error_message: error.message,
     });
-    return { success: false, message: `Retry failed: ${error.message}` };
+
+    await logFailed({
+      store_id: store.id,
+      store_name: store.store_name,
+      order_id: log.order_id,
+      order_number: order.order_number,
+      channel: 'whatsapp',
+      action: 'retry_error',
+      message: `Unexpected error: ${error.message}`,
+      details: { log_id: logId }
+    });
+
+    return { success: false, message: error.message };
   }
 };
 
-exports.retryBulk = async (body, query) => {
-  const where = {
-    status: 'failed',
-  };
- 
-  if (body.log_ids && Array.isArray(body.log_ids) && body.log_ids.length > 0) {
-    where.id = { [Op.in]: body.log_ids };
-  } else {
-    if (query.store_id) {
-      where.store_id = query.store_id;
+exports.retryBulk = async (body) => {
+  try {
+    let where = {
+      status: 'failed',
+    };
+
+    if (body.log_ids && Array.isArray(body.log_ids) && body.log_ids.length > 0) {
+      where.id = { [Op.in]: body.log_ids };
     }
+
+    const failedLogs = await RetryQueue.findAll({ where });
+
+    const retryableLogs = failedLogs.filter(log => log.retry_count < log.max_retries);
+
+    if (retryableLogs.length === 0) {
+      return { success: true, message: 'No failed messages to retry', data: [] };
+    }
+
+    const results = [];
+
+    for (const log of retryableLogs) {
+      const result = await exports.retrySingle(log.id);
+      results.push({ log_id: log.id, order_id: log.order_id, ...result });
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+
+    await logSuccess({
+      store_id: retryableLogs[0]?.store_id || null,
+      store_name: null,
+      order_id: null,
+      channel: 'whatsapp',
+      action: 'bulk_retry',
+      message: `Bulk retry done: ${successCount} success, ${failCount} failed`,
+      details: {
+        total: retryableLogs.length,
+        success: successCount,
+        failed: failCount
+      }
+    });
+
+    return {
+      success: true,
+      message: `Bulk retry complete: ${successCount} sent, ${failCount} failed`,
+      data: results,
+    };
+
+  } catch (error) {
+    await logFailed({
+      store_id: null,
+      store_name: null,
+      order_id: null,
+      channel: 'whatsapp',
+      action: 'bulk_retry_error',
+      message: `Bulk retry failed: ${error.message}`,
+      details: { error: error.message }
+    });
+
+    return {
+      success: false,
+      message: `Bulk retry failed: ${error.message}`
+    };
   }
- 
-  const failedLogs = await RetryQueue.findAll({ where });
- 
-  const retryableLogs = failedLogs.filter(log => log.retry_count < log.max_retries);
- 
-  if (retryableLogs.length === 0) {
-    return { success: true, message: 'No failed messages to retry', data: [] };
-  }
- 
-  const results = [];
- 
-  for (const log of retryableLogs) {
-    const result = await exports.retrySingle(log.id);
-    results.push({ log_id: log.id, order_id: log.order_id, ...result });
-  }
- 
-  const successCount = results.filter(r => r.success).length;
-  const failCount = results.filter(r => !r.success).length;
- 
-  return {
-    success: true,
-    message: `Bulk retry complete: ${successCount} sent, ${failCount} failed`,
-    data: results,
-  };
 };
