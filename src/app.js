@@ -149,7 +149,7 @@ fastify.register(require('./routes/whatsappCallback.routes'), { prefix: '/api/wh
 fastify.register(require('./routes/voiceCallback.routes'), { prefix: '/api/voice' });
 fastify.register(require('./routes/ordifyCallback.routes'), { prefix: '/api/ordify' });
 fastify.register(require('./routes/storeSetting.routes'), { prefix: '/api/store-setting' });
-fastify.register(require('./routes/shopifyWebhook.routes'), { prefix: '/api/webhook' });
+fastify.register(require('./routes/shopifyWebhook.routes'), { prefix: '/api/v1/webhook' });
 fastify.register(require('./routes/activityLog.routes'), { prefix: '/api/activity-log' });
 fastify.register(require('./routes/dashboard.routes'), { prefix: '/api/dashboard' });
 fastify.register(require('./routes/feedback.routes'), { prefix: '/api/feedback' });
