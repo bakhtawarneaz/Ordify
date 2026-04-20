@@ -7,6 +7,7 @@ require('./workers/reattempt.worker');
 require('./workers/abandonedCartReminder.worker');
 //require('./workers/abandonedCartSync.worker');
 const { connection } = require('./config/queue');
+require('./workers/voiceReattempt.worker');
 const PORT = process.env.PORT || 8080;
 
 const gracefulShutdown = async (signal) => {

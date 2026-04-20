@@ -124,6 +124,8 @@ const handleOrderCreate = async (store, orderData) => {
           access_token: store.access_token,
           api_key: store.api_key,
           campaign_id: store.campaign_id,
+          voice_reattempt_max_count: store.voice_reattempt_max_count,
+          voice_reattempt_delay_minutes: store.voice_reattempt_delay_minutes,
         },
         orderData,
       }, {

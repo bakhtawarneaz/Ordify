@@ -21,6 +21,7 @@ const feedbackQueue = new Queue('feedback', { connection });
 const reattemptQueue = new Queue('reattempt', { connection });
 const abandonedCartReminderQueue = new Queue('abandoned-cart-reminder', { connection });
 const abandonedCartSyncQueue = new Queue('abandoned-cart-sync', { connection });
+const voiceReattemptQueue = new Queue('voice-reattempt', { connection });
 
 module.exports = {
   connection,
@@ -29,4 +30,5 @@ module.exports = {
   reattemptQueue,
   abandonedCartReminderQueue,
   abandonedCartSyncQueue,
+  voiceReattemptQueue,
 };

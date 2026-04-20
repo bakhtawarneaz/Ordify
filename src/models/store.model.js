@@ -80,6 +80,16 @@ const Store = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    voice_reattempt_max_count: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 3,
+    },
+    voice_reattempt_delay_minutes: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 60,
+    },
   },
   {
     tableName: 'stores',

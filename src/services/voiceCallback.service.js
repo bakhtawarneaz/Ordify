@@ -3,9 +3,12 @@ const { sendVoiceCall } = require('../utils/voiceHelper');
 const { hasExistingTag } = require('../utils/tagHelper');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
 const Order = require('../models/order.model');
+const VoiceResponse = require('../models/voiceResponse.model');
 const { sendUnansweredWhatsApp } = require('../utils/unansweredHelper');
 const { isServiceActive } = require('../services/storeSetting.service');
 const { handlePostCallbackActions } = require('../utils/orderActionHelper');
+const { extractPhoneFromOrder } = require('../utils/phoneHelper');
+const { voiceReattemptQueue } = require('../config/queue');
 
 exports.handleVoiceCall = async (orderData, store) => {
   try {
@@ -15,6 +18,7 @@ exports.handleVoiceCall = async (orderData, store) => {
       return { success: false, message: 'Voice not enabled for this store' };
     }
 
+    const phoneNumber = extractPhoneFromOrder(orderData);
     const sendResult = await sendVoiceCall(orderData, store);
 
     if (!sendResult || sendResult.success === false) {
@@ -22,7 +26,38 @@ exports.handleVoiceCall = async (orderData, store) => {
       return { success: false, message: sendResult?.error || 'Failed to send voice call' };
     }
 
-    await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'voice', action: 'voice_call_sent', message: 'Voice call sent', details: { phone: orderData?.billing_address?.phone || orderData?.customer?.phone } });
+    const cdrId = sendResult?.CdrID || null;
+
+    // Save voice response
+    const voiceResponse = await VoiceResponse.create({
+      store_id: store.id,
+      order_id: orderData.id,
+      phone_number: phoneNumber,
+      cdr_id: cdrId,
+    });
+
+    await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'voice', action: 'voice_call_sent', message: 'Voice call sent', details: { phone: phoneNumber, cdrId } });
+
+    // Schedule reattempt if enabled
+    const voiceReattemptActive = await isServiceActive(store.id, 'voice_reattempt');
+    if (voiceReattemptActive && voiceResponse) {
+      const delayMinutesSetting = store.voice_reattempt_delay_minutes || 60;
+      const delayMinutes = parseInt(delayMinutesSetting) || 60;
+      const delayMs = delayMinutes * 60 * 1000;
+
+      await voiceReattemptQueue.add('voice-reattempt-check', {
+        voiceResponseId: voiceResponse.id,
+      }, {
+        delay: delayMs,
+        attempts: 2,
+        backoff: { type: 'exponential', delay: 30000 },
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      });
+
+      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'voice', action: 'voice_reattempt_scheduled', message: `Voice reattempt scheduled after ${delayMinutes} minutes` });
+    }
+
     return { success: true, message: 'Voice call sent' };
   } catch (error) {
     console.error('Error in handleVoiceCall:', error.message);
@@ -73,7 +108,6 @@ exports.handleVoiceCallback = async (callbackData) => {
     const order = await Order.findOne({ where: { order_id: orderIdNum, store_id: store.id } });
     const orderNumber = order?.order_number || null;
 
-
     if (hasOurTag) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderIdNum, order_number: orderNumber, channel: 'voice', action: 'tag_skipped', message: 'Order already tagged', details: { userinput: action } });
       return { success: true, message: 'Order already tagged' };
@@ -90,6 +124,16 @@ exports.handleVoiceCallback = async (callbackData) => {
     } else {
       await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderIdNum, order_number: orderNumber, channel: 'voice', action: 'voice_callback', message: `Invalid action: ${action}`, details: { userinput: action } });
       return { success: false, message: 'Invalid action' };
+    }
+
+    // Update action_taken in voice response
+    try {
+      await VoiceResponse.update(
+        { action_taken: true },
+        { where: { store_id: store.id, order_id: orderIdNum } }
+      );
+    } catch (updateError) {
+      console.error('Error updating voice response:', updateError.message);
     }
 
     const actionResults = await handlePostCallbackActions(store, orderIdNum, meaning, 'voice', existingTagsString, { userinput: action });

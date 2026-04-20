@@ -32,6 +32,7 @@ const {
   reattemptQueue,
   abandonedCartReminderQueue,
   abandonedCartSyncQueue,
+  voiceReattemptQueue,
 } = require('./config/queue');
 
 const serverAdapter = new FastifyAdapter();
@@ -44,6 +45,7 @@ createBullBoard({
     new BullMQAdapter(reattemptQueue),
     new BullMQAdapter(abandonedCartReminderQueue),
     new BullMQAdapter(abandonedCartSyncQueue),
+    new BullMQAdapter(voiceReattemptQueue),
   ],
   serverAdapter,
 });
