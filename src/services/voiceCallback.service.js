@@ -126,17 +126,15 @@ exports.handleVoiceCallback = async (callbackData) => {
       return { success: false, message: 'Invalid action' };
     }
 
-    // Update action_taken in voice response
-    try {
+    const actionResults = await handlePostCallbackActions(store, orderIdNum, meaning, 'voice', existingTagsString, { userinput: action });
+
+    if (actionResults.tag && actionResults.tag.success && !actionResults.tag.skipped) {
       await VoiceResponse.update(
         { action_taken: true },
         { where: { store_id: store.id, order_id: orderIdNum } }
       );
-    } catch (updateError) {
-      console.error('Error updating voice response:', updateError.message);
     }
 
-    const actionResults = await handlePostCallbackActions(store, orderIdNum, meaning, 'voice', existingTagsString, { userinput: action });
     return { success: true, message: 'Voice callback processed', data: actionResults };
 
   } catch (error) {
