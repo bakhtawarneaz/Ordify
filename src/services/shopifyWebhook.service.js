@@ -299,9 +299,11 @@ const handleOrderUpdated = async (store, orderData) => {
       where: { store_id: store.id, order_id: orderData.id },
     });
 
-    if (order) {
-      await order.update({ order_data: orderData });
+    if (!order) {
+      return { success: true, message: 'Order not yet created - update skipped' };
     }
+
+    await order.update({ order_data: orderData });
 
     const results = [];
     const services = await getActiveServices(store.id);
