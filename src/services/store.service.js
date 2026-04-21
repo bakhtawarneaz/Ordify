@@ -23,6 +23,13 @@ exports.createStore = async (payload) => {
     brand_name: payload.brand_name || null,
     campaign_id: payload.campaign_id || null,
     client_secret: payload.client_secret || null,
+    feedback_delay_days: payload.feedback_delay_days || null,
+    judge_me_api_token: payload.judge_me_api_token || null,
+    reattempt_max_count: payload.reattempt_max_count || null,
+    reattempt_delay_minutes: payload.reattempt_delay_minutes || null,
+    whatsapp_trigger_tag: payload.whatsapp_trigger_tag || null,
+    voice_reattempt_max_count: payload.voice_reattempt_max_count || null,
+    voice_reattempt_delay_minutes: payload.voice_reattempt_delay_minutes || null
   });
 
   return { success: true, message: 'Store created successfully', data: store };
