@@ -47,7 +47,7 @@ exports.createTemplate = async (payload) => {
     template_type,
     buttons: buttons || null,
     download_attachment: download_attachment || false,
-    tracking_name: tracking_name || false,
+    tracking_name: tracking_name || null,
     payment_type: payment_type || null
   });
 
