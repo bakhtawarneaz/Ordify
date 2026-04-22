@@ -1,4 +1,5 @@
 const Role = require('../models/role.model');
+const User = require('../models/user.model');
 const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
 exports.createRole = async (payload) => {
@@ -23,8 +24,8 @@ exports.updateRole = async (id, payload) => {
     return { success: false, message: 'Role not found' };
   }
 
-  if (role.name === 'super_admin' && payload.name && payload.name !== 'super_admin') {
-    return { success: false, message: 'Cannot rename super_admin role' };
+  if (role.name === 'Super Admin' && payload.name && payload.name !== 'Super Admin') {
+    return { success: false, message: 'Cannot rename Super Admin role' };
   }
   
   if (payload.name) {
@@ -44,9 +45,19 @@ exports.deleteRole = async (id) => {
     return { success: false, message: 'Role not found' };
   }
 
-  if (role.name === 'super_admin') {
+  if (role.name === 'Super Admin') {
     return { success: false, message: 'Cannot delete super_admin role' };
   }
+
+  const userCount = await User.count({ where: { role_id: id } });
+  
+  if (userCount > 0) {
+    return {
+      success: false,
+      message: `This role cannot be deleted because ${userCount} ${userCount === 1 ? 'user is' : 'users are'} currently assigned to it. Please reassign or remove those users first.`,
+    };
+  }
+
 
   await role.destroy();
   return { success: true, message: 'Role deleted successfully' };
