@@ -73,30 +73,35 @@ exports.bulkAddSettings = async (payload) => {
   const store = await Store.findOne({ where: { id: store_id } });
   if (!store) return { success: false, message: 'Store not found' };
 
+  const existingSettings = await StoreSetting.findAll({
+    where: { store_id },
+    attributes: ['setting_key'],
+  });
+  const existingKeys = new Set(existingSettings.map(s => s.setting_key));
+
+  const toCreate = [];
   const results = [];
 
   for (const item of settings) {
-    const existing = await StoreSetting.findOne({
-      where: { store_id, setting_key: item.setting_key },
-    });
-
-    if (existing) {
+    if (existingKeys.has(item.setting_key)) {
       results.push({ setting_key: item.setting_key, status: 'already_exists' });
-      continue;
+    } else {
+      toCreate.push({
+        store_id,
+        setting_key: item.setting_key,
+        is_active: item.is_active !== undefined ? item.is_active : false,
+      });
+      results.push({ setting_key: item.setting_key, status: 'created' });
     }
+  }
 
-    await StoreSetting.create({
-      store_id,
-      setting_key: item.setting_key,
-      is_active: item.is_active !== undefined ? item.is_active : false,
-    });
-
-    results.push({ setting_key: item.setting_key, status: 'created' });
+  if (toCreate.length > 0) {
+    await StoreSetting.bulkCreate(toCreate);
   }
 
   return {
     success: true,
-    message: `${results.filter(r => r.status === 'created').length} settings added`,
+    message: `${toCreate.length} settings added, ${results.length - toCreate.length} already existed`,
     data: results,
   };
 };
