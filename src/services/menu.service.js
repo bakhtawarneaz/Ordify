@@ -46,6 +46,18 @@ exports.toggleMenuStatus = async ({ id, is_active }) => {
   };
 };
 
+exports.deleteMenu = async (id) => {
+  const menu = await Menu.findByPk(id);
+  if (!menu) {
+    return { success: false, message: 'Menu not found' };
+  }
+  await menu.destroy(); 
+  return {
+    success: true,
+    message: 'Menu deleted successfully',
+  };
+};
+
 exports.getMenuById = async (id) => {
   const menu = await Menu.findByPk(id);
   if (!menu) {
