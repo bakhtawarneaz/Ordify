@@ -1,5 +1,5 @@
 const { captureOrderPayment, cancelShopifyOrder } = require('./shopifyHelper');
-const { isServiceActive } = require('../services/storeSetting.service');
+const { getActiveServices } = require('../services/storeSetting.service');
 const { logSuccess, logFailed } = require('./loggerHelper');
 const { sendSessionWhatsApp } = require('./sessionHelper');
 const { findAndApplyTag } = require('./tagHelper');
@@ -9,8 +9,9 @@ exports.handlePostCallbackActions = async (store, orderId, meaning, channel, exi
   const results = {};
   const order = await Order.findOne({ where: { order_id: orderId, store_id: store.id } });
   const orderNumber = order?.order_number || null;
+  const services = await getActiveServices(store.id);
 
-  const taggingActive = await isServiceActive(store.id, 'tagging');
+  const taggingActive = services.isActive('tagging');
   if (taggingActive) {
     const tagResult = await findAndApplyTag(store, orderId, meaning, channel, existingTagsString);
     if (tagResult.success) {
@@ -25,7 +26,7 @@ exports.handlePostCallbackActions = async (store, orderId, meaning, channel, exi
     results.tag = { success: true, message: 'Tagging not enabled for this store' };
   }
 
-  const shopifyActionActive = await isServiceActive(store.id, 'shopify_order_action');
+  const shopifyActionActive = services.isActive('shopify_order_action');
   if (shopifyActionActive) {
     if (meaning === 'confirm') {
       const result = await captureOrderPayment(store, orderId);
@@ -46,7 +47,7 @@ exports.handlePostCallbackActions = async (store, orderId, meaning, channel, exi
     }
   }
 
-  const sessionEnabled = await isServiceActive(store.id, 'session_template');
+  const sessionEnabled = services.isActive('session_template');
   if (sessionEnabled) {
     const sessionResult = await sendSessionWhatsApp(store, orderId, meaning, channel);
     results.session = { success: sessionResult.success, message: sessionResult.message };

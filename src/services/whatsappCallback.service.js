@@ -9,7 +9,7 @@ const { createRetryQueue } = require('../services/retryQueue.service');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
 const { extractPhoneFromOrder } = require('../utils/phoneHelper');
 const { reattemptQueue } = require('../config/queue');
-const { isServiceActive } = require('../services/storeSetting.service');
+const { getActiveServices } = require('../services/storeSetting.service');
 const { handlePostCallbackActions } = require('../utils/orderActionHelper');
 
 exports.handleWhatsAppSend = async (store, orderData) => {
@@ -17,9 +17,10 @@ exports.handleWhatsAppSend = async (store, orderData) => {
 
     const isCOD = orderData.payment_gateway_names?.includes('Cash on Delivery (COD)');
     const phoneNumber = extractPhoneFromOrder(orderData);
+    const services = await getActiveServices(store.id);
 
-    const postPaidActive = await isServiceActive(store.id, 'post_paid');
-    const prePaidActive = await isServiceActive(store.id, 'pre_paid');
+    const postPaidActive = services.isActive('post_paid');
+    const prePaidActive = services.isActive('pre_paid');
 
     if (postPaidActive && !prePaidActive && !isCOD) {
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'whatsapp_skipped', message: 'Not COD - WhatsApp skipped' });
@@ -31,7 +32,7 @@ exports.handleWhatsAppSend = async (store, orderData) => {
       return { success: true, message: 'COD order - WhatsApp skipped for prepaid only store' };
     }
 
-    const triggerTagActive = await isServiceActive(store.id, 'whatsapp_trigger_tag');
+    const triggerTagActive = services.isActive('whatsapp_trigger_tag');
     if (triggerTagActive) {
       const triggerTag = store.whatsapp_trigger_tag;
       if (triggerTag) {
@@ -86,7 +87,7 @@ exports.handleWhatsAppSend = async (store, orderData) => {
     await createRetryQueue({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'sent' });
     await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'whatsapp_sent', message: `WhatsApp sent to ${phoneNumber}`, details: { phone: phoneNumber, messageId, template_id: template.id } });
 
-    const reattemptActive = await isServiceActive(store.id, 'whatsapp_reattempt');
+    const reattemptActive = services.isActive('whatsapp_reattempt');
     if (reattemptActive) {
       const msgResponse = await WhatsAppMessageResponse.findOne({
         where: { store_id: store.id, order_id: orderData.id, message_id: messageId },
