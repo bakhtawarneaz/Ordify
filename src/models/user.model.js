@@ -10,6 +10,7 @@ const User = sequelize.define('User', {
   image: { type: DataTypes.STRING, allowNull: true, },
   role_id: { type: DataTypes.INTEGER, allowNull: false }, 
   is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
+  website: { type: DataTypes.STRING, allowNull: true },
 }, {
   tableName: 'users',
   timestamps: true,
