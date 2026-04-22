@@ -38,6 +38,22 @@ const buildWhere = (query, extra = {}) => {
   return where;
 };
 
+const getPreviousMonthRange = () => {
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(now.getDate() - 60);
+  const end = new Date(now);
+  end.setDate(now.getDate() - 30);
+  return { [Op.between]: [start, end] };
+};
+
+const getCurrentMonthRange = () => {
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(now.getDate() - 30);
+  return { [Op.between]: [start, now] };
+};
+
 
 exports.getOrderStats = async (query) => {
   const storeWhere = query.store_id ? { store_id: query.store_id } : {};
@@ -82,6 +98,52 @@ exports.getMessageStats = async (query) => {
   }
 
   return { success: true, data: stats };
+};
+
+exports.getMessageComparison = async (query) => {
+  const storeWhere = query.store_id ? { store_id: query.store_id } : {};
+  const channels = ['whatsapp', 'voice', 'ordify'];
+  const comparison = {};
+
+  for (const channel of channels) {
+    const currentTotal = await ActivityLog.count({
+      where: {
+        ...storeWhere,
+        channel,
+        action: { [Op.like]: '%sent%' },
+        createdAt: getCurrentMonthRange(),
+      },
+    });
+
+    const previousTotal = await ActivityLog.count({
+      where: {
+        ...storeWhere,
+        channel,
+        action: { [Op.like]: '%sent%' },
+        createdAt: getPreviousMonthRange(),
+      },
+    });
+
+    let change, trend;
+    if (previousTotal === 0) {
+      change = currentTotal > 0 ? '+100%' : '0%';
+      trend = currentTotal > 0 ? 'up' : 'neutral';
+    } else {
+      const percent = ((currentTotal - previousTotal) / previousTotal) * 100;
+      const rounded = Math.round(percent);
+      change = `${rounded >= 0 ? '+' : ''}${rounded}%`;
+      trend = rounded > 0 ? 'up' : rounded < 0 ? 'down' : 'neutral';
+    }
+
+    comparison[channel] = {
+      current: currentTotal,
+      previous: previousTotal,
+      change,
+      trend,
+    };
+  }
+
+  return { success: true, data: comparison };
 };
 
 
@@ -257,6 +319,7 @@ exports.getTemplateOverview = async (query) => {
 exports.getDashboard = async (query) => {
   const orderStats = await exports.getOrderStats(query);
   const messageStats = await exports.getMessageStats(query);
+  const messageComparison = await exports.getMessageComparison(query);
   const tagStats = await exports.getTagStats(query);
   const retryStats = await exports.getRetryStats(query);
   const activeStores = await exports.getActiveStores();
@@ -269,6 +332,7 @@ exports.getDashboard = async (query) => {
       orders: orderStats.data,
       payment_types: paymentTypeStats.data,
       messages: messageStats.data,
+      message_comparison: messageComparison.data,
       tags: tagStats.data,
       retry: retryStats.data,
       stores: activeStores.data,
