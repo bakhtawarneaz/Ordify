@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
 exports.createUser = async (payload) => {
-  const { name, email, password, number, image, role_id, is_active } = payload;
+  const { name, email, password, number, image, role_id, is_active, website } = payload;
 
   if (!name || !email || !password) {
     return { success: false, message: 'name, email and password are required' };
@@ -32,6 +32,7 @@ exports.createUser = async (payload) => {
     image: image || null,
     role_id: role_id || null,
     is_active: is_active !== undefined ? is_active : true,
+    website: website || null, 
   });
 
   const userData = user.toJSON();
