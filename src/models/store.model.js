@@ -96,5 +96,4 @@ const Store = sequelize.define(
     timestamps: true,
   }
 );
-
 module.exports = Store;

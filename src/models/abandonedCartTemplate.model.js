@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const Store = require('./store.model');
 
 const AbandonedCartTemplate = sequelize.define(
   'AbandonedCartTemplate',
@@ -67,6 +66,5 @@ const AbandonedCartTemplate = sequelize.define(
   }
 );
 
-AbandonedCartTemplate.belongsTo(Store, { foreignKey: 'store_id' });
 
 module.exports = AbandonedCartTemplate;

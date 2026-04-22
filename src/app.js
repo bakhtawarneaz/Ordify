@@ -23,6 +23,7 @@ const cors = require('@fastify/cors');
 const helmet = require('@fastify/helmet');
 const rateLimit = require('@fastify/rate-limit');
 const sequelize = require('./config/db');
+require('./models/associations');
 const { createBullBoard } = require('@bull-board/api');
 const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
 const { FastifyAdapter } = require('@bull-board/fastify');

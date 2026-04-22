@@ -113,21 +113,37 @@ exports.getByStore = async (query) => {
   }
 
   const { page: pageNum, limit: pageSize, offset } = getPagination(query);
-
-  const { count, rows } = await StoreSetting.findAndCountAll({
-    where,
-    include: [{ model: Store, attributes: ['id', 'store_name', 'store_url'] }],
+  const storeWhere = query.store_id ? { id: query.store_id } : {};
+  const { count, rows: stores } = await Store.findAndCountAll({
+    where: storeWhere,
+    attributes: ['id', 'store_name', 'store_url'],
+    include: [
+      {
+        model: StoreSetting,
+        attributes: ['id', 'setting_key', 'is_active', 'createdAt', 'updatedAt'],
+        required: false,
+      },
+    ],
     order: [['id', 'ASC']],
     limit: pageSize,
     offset,
+    distinct: true, 
   });
+
+  const data = stores.map(store => ({
+    store: {
+      id: store.id,
+      store_name: store.store_name,
+      store_url: store.store_url,
+    },
+    settings: store.StoreSettings || [],
+  }));
 
   return {
     success: true,
-    data: rows,
+    data,
     pagination: getPaginationResponse(count, pageNum, pageSize),
   };
-
 };
 
 exports.getActiveServices = async (store_id) => {

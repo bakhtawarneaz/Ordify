@@ -1,9 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const Store = require('./store.model');
-const AbandonedCheckout = require('./abandonedCheckout.model');
-const AbandonedCartReminder = require('./abandonedCartReminder.model');
-const AbandonedCartTemplate = require('./abandonedCartTemplate.model');
 
 const AbandonedCartMessageLog = sequelize.define(
   'AbandonedCartMessageLog',
@@ -96,10 +92,5 @@ const AbandonedCartMessageLog = sequelize.define(
     updatedAt: 'dtu',
   }
 );
-
-AbandonedCartMessageLog.belongsTo(Store, { foreignKey: 'store_id' });
-AbandonedCartMessageLog.belongsTo(AbandonedCheckout, { foreignKey: 'abandoned_checkout_id' });
-AbandonedCartMessageLog.belongsTo(AbandonedCartReminder, { foreignKey: 'reminder_id' });
-AbandonedCartMessageLog.belongsTo(AbandonedCartTemplate, { foreignKey: 'template_id' });
 
 module.exports = AbandonedCartMessageLog;

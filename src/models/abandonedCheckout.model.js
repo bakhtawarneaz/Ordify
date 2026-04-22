@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const Store = require('./store.model');
 
 const AbandonedCheckout = sequelize.define(
   'AbandonedCheckout',
@@ -95,6 +94,5 @@ const AbandonedCheckout = sequelize.define(
   }
 );
 
-AbandonedCheckout.belongsTo(Store, { foreignKey: 'store_id' });
 
 module.exports = AbandonedCheckout;

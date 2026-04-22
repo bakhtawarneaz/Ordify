@@ -1,7 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const User = require('./user.model');
-const Menu = require('./menu.model');
 
 const UserMenuPermission = sequelize.define(
   'UserMenuPermission',
@@ -53,8 +51,5 @@ const UserMenuPermission = sequelize.define(
     ],
   }
 );
-
-UserMenuPermission.belongsTo(User, { foreignKey: 'user_id' });
-UserMenuPermission.belongsTo(Menu, { foreignKey: 'menu_id' });
 
 module.exports = UserMenuPermission;

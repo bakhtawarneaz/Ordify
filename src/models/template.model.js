@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const Store = require('./store.model');
 
 const Template = sequelize.define(
   'Template',
@@ -105,5 +104,4 @@ const Template = sequelize.define(
   }
 );
 
-Template.belongsTo(Store, { foreignKey: 'store_id' });
 module.exports = Template;
