@@ -4,7 +4,7 @@ const ForgotPasswordOtp = require('../models/forgotPasswordOtp.model');
 const { Op } = require('sequelize');
 const { hashPassword, comparePassword } = require('../utils/bcrypt');
 const { generateToken } = require('../utils/jwt');
-const { generateOtp, hashOtp, generateResetToken } = require('../utils/otpHelper'); 
+const { generateOtp, generateResetToken } = require('../utils/otpHelper'); 
 const { sendOtpSms } = require('../utils/smsHelper');
 
 exports.register = async ({ name, email, password, role_id, number, image }) => {
@@ -100,7 +100,7 @@ exports.sendForgotPasswordOtp = async ({ email }) => {
   const recentOtp = await ForgotPasswordOtp.findOne({
     where: {
       email,
-      createdAt: { [Op.gt]: new Date(Date.now() - 60 * 1000) },
+      createdAt: { [Op.gt]: new Date(Date.now() - 30 * 1000) },
     },
     order: [['createdAt', 'DESC']],
   });
@@ -117,12 +117,10 @@ exports.sendForgotPasswordOtp = async ({ email }) => {
   });
 
   const otp = generateOtp();
-  const hashedOtp = hashOtp(otp);
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); 
-
+  const expiresAt = new Date(Date.now() + 60 * 1000);
   await ForgotPasswordOtp.create({
     email,
-    otp: hashedOtp,
+    otp: otp,
     expires_at: expiresAt,
   });
 
@@ -130,7 +128,7 @@ exports.sendForgotPasswordOtp = async ({ email }) => {
 
   if (!smsResult.success) {
     await ForgotPasswordOtp.destroy({
-      where: { email, otp: hashedOtp },
+      where: { email, otp: otp },
     });
 
     return {
@@ -149,8 +147,6 @@ exports.verifyOtp = async ({ email, otp }) => {
   if (!email || !otp) {
     return { success: false, message: 'Email and OTP are required' };
   }
-
-  const hashedOtp = hashOtp(otp);
 
   const record = await ForgotPasswordOtp.findOne({
     where: {
@@ -175,9 +171,18 @@ exports.verifyOtp = async ({ email, otp }) => {
     };
   }
 
-  if (record.otp !== hashedOtp) {
-    await record.update({ attempts: record.attempts + 1 });
-    const remainingAttempts = 5 - (record.attempts + 1);
+  if (record.otp !== otp) {
+    const newAttempts = record.attempts + 1;
+    await record.update({ attempts: newAttempts });
+
+    if (newAttempts >= 5) {
+      return {
+        success: false,
+        message: 'Too many failed attempts. Please request a new OTP.',
+      };
+    }
+
+    const remainingAttempts = 5 - newAttempts;
     return {
       success: false,
       message: `Invalid OTP. ${remainingAttempts} ${remainingAttempts === 1 ? 'attempt' : 'attempts'} remaining.`,
@@ -185,7 +190,7 @@ exports.verifyOtp = async ({ email, otp }) => {
   }
 
   const resetToken = generateResetToken();
-  const resetTokenExpires = new Date(Date.now() + 10 * 60 * 1000); 
+  const resetTokenExpires = new Date(Date.now() + 10 * 60 * 1000);
 
   await record.update({
     verified: true,
