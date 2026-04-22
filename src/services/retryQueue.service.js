@@ -6,6 +6,7 @@ const Template = require('../models/template.model');
 const WhatsAppMessageResponse = require('../models/whatsappMessageResponse.model');
 const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
+const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
 
 exports.createRetryQueue = async ({ store_id, order_id, template_id, phone_number, status, error_message }) => {
@@ -44,12 +45,21 @@ exports.getAllRetryQueue = async (query) => {
     };
   }
 
-  const logs = await RetryQueue.findAll({
+  const { page: pageNum, limit: pageSize, offset } = getPagination(query);
+
+  const { count, rows } = await RetryQueue.findAndCountAll({
     where,
     order: [['createdAt', 'DESC']],
+    limit: pageSize,
+    offset,
   });
 
-  return { success: true, data: logs };
+  return {
+    success: true,
+    data: rows,
+    pagination: getPaginationResponse(count, pageNum, pageSize),
+  };
+
 };
 
 exports.retrySingle = async (logId) => {

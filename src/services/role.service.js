@@ -1,4 +1,5 @@
 const Role = require('../models/role.model');
+const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
 exports.createRole = async (payload) => {
   const { name, description } = payload;
@@ -60,10 +61,20 @@ exports.getRoleById = async (id) => {
   return { success: true, data: role };
 };
 
-exports.getAllRoles = async () => {
-  const roles = await Role.findAll({
+exports.getAllRoles = async (query = {}) => {
+
+  const { page: pageNum, limit: pageSize, offset } = getPagination(query);
+
+  const { count, rows } = await Role.findAndCountAll({
     order: [['id', 'ASC']],
+    limit: pageSize,
+    offset,
   });
 
-  return { success: true, data: roles };
+  return {
+    success: true,
+    data: rows,
+    pagination: getPaginationResponse(count, pageNum, pageSize),
+  };
+
 };

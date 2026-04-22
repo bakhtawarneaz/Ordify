@@ -1,4 +1,5 @@
 const Tag = require('../models/tag.model');
+const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
 exports.createTag = async (payload) => {
   const { store_id, name, color, channel, meaning } = payload;
@@ -52,17 +53,26 @@ exports.getTagById = async (id) => {
   return { success: true, data: tag };
 };
 
-exports.getAllTags = async (store_id) => {
-    const where = {};
-  
-    if (store_id) {
-      where.store_id = store_id;
-    }
-  
-    const tags = await Tag.findAll({
-      where,
-      order: [['id', 'ASC']],
-    });
-  
-    return { success: true, data: tags };
+exports.getAllTags = async (query = {}) => {
+  const { store_id } = query;
+  const where = {};
+
+  if (store_id) {
+    where.store_id = store_id;
+  }
+
+  const { page: pageNum, limit: pageSize, offset } = getPagination(query);
+
+  const { count, rows } = await Tag.findAndCountAll({
+    where,
+    order: [['id', 'ASC']],
+    limit: pageSize,
+    offset,
+  });
+
+  return {
+    success: true,
+    data: rows,
+    pagination: getPaginationResponse(count, pageNum, pageSize),
+  };
 };

@@ -148,6 +148,7 @@ exports.fetchTemplates = async (query) => {
     buttons: t.buttons,
     download_attachment: t.download_attachment,
     wt_api: t.wt_api,
+    tracking_name: t.tracking_name,
     created_at: t.dt,
     updated_at: t.dtu,
   }));

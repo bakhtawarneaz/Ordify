@@ -1,6 +1,7 @@
 const User = require('../models/user.model');
 const Role = require('../models/role.model');
 const bcrypt = require('bcrypt');
+const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
 exports.createUser = async (payload) => {
   const { name, email, password, number, image, role_id, is_active } = payload;
@@ -105,14 +106,22 @@ exports.getAllUsers = async (query) => {
     where.is_active = query.is_active;
   }
 
-  const users = await User.findAll({
+  const { page: pageNum, limit: pageSize, offset } = getPagination(query);
+
+  const { count, rows } = await User.findAndCountAll({
     where,
     attributes: { exclude: ['password'] },
     include: [{ model: Role, as: 'role', attributes: ['id', 'name'] }],
     order: [['id', 'ASC']],
+    limit: pageSize,
+    offset,
   });
 
-  return { success: true, data: users };
+  return {
+    success: true,
+    data: rows,
+    pagination: getPaginationResponse(count, pageNum, pageSize),
+  };
 };
 
 exports.toggleStatus = async (id) => {

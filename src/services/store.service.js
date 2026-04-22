@@ -1,4 +1,5 @@
 const Store = require('../models/store.model');
+const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
 exports.createStore = async (payload) => {
   const { store_id, store_name } = payload;
@@ -64,29 +65,25 @@ exports.getStoreById = async (id) => {
   return { success: true, data: store };
 };
 
-exports.getAllStores = async (query) => {
+exports.getAllStores = async (query = {}) => {
   const where = {};
 
   if (query.status !== undefined) {
     where.status = query.status;
   }
 
-  if (query.whatsapp_only !== undefined) {
-    where.whatsapp_only = query.whatsapp_only;
-  }
+  const { page: pageNum, limit: pageSize, offset } = getPagination(query);
 
-  if (query.voice_only !== undefined) {
-    where.voice_only = query.voice_only;
-  }
-
-  if (query.ordify_only !== undefined) {
-    where.ordify_only = query.ordify_only;
-  }
-
-  const stores = await Store.findAll({
+  const { count, rows } = await Store.findAndCountAll({
     where,
     order: [['id', 'ASC']],
+    limit: pageSize,
+    offset,
   });
 
-  return { success: true, data: stores };
+  return {
+    success: true,
+    data: rows,
+    pagination: getPaginationResponse(count, pageNum, pageSize),
+  };
 };

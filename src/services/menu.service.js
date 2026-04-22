@@ -1,6 +1,7 @@
 const Menu = require('../models/menu.model');
 const Role = require('../models/role.model');
 const UserMenuPermission = require('../models/userMenuPermission.model');
+const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
 exports.createMenu = async (payload) => {
   const { name, key, route, icon, parent_id, order_no, is_active } = payload;
@@ -54,22 +55,31 @@ exports.getMenuById = async (id) => {
   return { success: true, data: menu };
 };
 
-exports.getAllMenus = async () => {
-  const menus = await Menu.findAll({
-    where: { is_active: true },
+exports.getAllMenus = async (query = {}) => {
+  const { page: pageNum, limit: pageSize, offset } = getPagination(query);
+
+  const { count, rows } = await Menu.findAndCountAll({
+    where: { is_active: true, parent_id: null },
     order: [['order_no', 'ASC']],
+    limit: pageSize,
+    offset,
     include: [
       {
         model: Menu,
         as: 'children',
         where: { is_active: true },
         required: false,
+        separate: true,
         order: [['order_no', 'ASC']],
       },
     ],
   });
 
-  return { success: true, data: menus };
+  return {
+    success: true,
+    data: rows,
+    pagination: getPaginationResponse(count, pageNum, pageSize),
+  };
 };
 
 exports.getMyMenus = async (user) => {

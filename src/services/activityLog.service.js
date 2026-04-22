@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const ActivityLog = require('../models/activityLog.model');
+const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
 exports.getAllLogs = async (query) => {
   const where = {};
@@ -30,12 +31,21 @@ exports.getAllLogs = async (query) => {
     };
   }
 
-  const logs = await ActivityLog.findAll({
+  const { page: pageNum, limit: pageSize, offset } = getPagination(query);
+
+  const { count, rows } = await ActivityLog.findAndCountAll({
     where,
     order: [['createdAt', 'DESC']],
+    limit: pageSize,
+    offset,
   });
 
-  return { success: true, data: logs };
+  return {
+    success: true,
+    data: rows,
+    pagination: getPaginationResponse(count, pageNum, pageSize),
+  };
+
 };
 
 exports.getLogStats = async (store_id) => {

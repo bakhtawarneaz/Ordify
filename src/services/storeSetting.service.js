@@ -1,5 +1,6 @@
 const StoreSetting = require('../models/storeSetting.model');
 const Store = require('../models/store.model');
+const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
 exports.addSetting = async (payload) => {
   const { store_id, setting_key, is_active } = payload;
@@ -105,12 +106,23 @@ exports.getByStore = async (query) => {
   if (query.store_id) {
     where.store_id = query.store_id;
   }
-  const settings = await StoreSetting.findAll({
+
+  const { page: pageNum, limit: pageSize, offset } = getPagination(query);
+
+  const { count, rows } = await StoreSetting.findAndCountAll({
     where,
     include: [{ model: Store, attributes: ['id', 'store_name', 'store_url'] }],
     order: [['id', 'ASC']],
+    limit: pageSize,
+    offset,
   });
-  return { success: true, data: settings };
+
+  return {
+    success: true,
+    data: rows,
+    pagination: getPaginationResponse(count, pageNum, pageSize),
+  };
+
 };
 
 exports.getActiveServices = async (store_id) => {
