@@ -50,19 +50,6 @@ exports.updateSetting = async (payload) => {
   return { success: true, message: 'Setting updated', data: existing };
 };
 
-exports.deleteSetting = async (store_id, setting_key) => {
-  const setting = await StoreSetting.findOne({
-    where: { store_id, setting_key },
-  });
-
-  if (!setting) {
-    return { success: false, message: 'Setting not found' };
-  }
-
-  await setting.destroy();
-  return { success: true, message: 'Setting deleted' };
-};
-
 exports.bulkAddSettings = async (payload) => {
   const { store_id, settings } = payload;
 
@@ -104,6 +91,69 @@ exports.bulkAddSettings = async (payload) => {
     message: `${toCreate.length} settings added, ${results.length - toCreate.length} already existed`,
     data: results,
   };
+};
+
+exports.bulkUpdateSettings = async (payload) => {
+  const { store_id, settings } = payload;
+
+  if (!store_id || !settings || !Array.isArray(settings) || settings.length === 0) {
+    return { success: false, message: 'store_id and settings array are required' };
+  }
+
+  const store = await Store.findOne({ where: { id: store_id } });
+  if (!store) {
+    return { success: false, message: 'Store not found' };
+  }
+
+  const existingSettings = await StoreSetting.findAll({
+    where: { store_id },
+  });
+
+  const existingMap = new Map();
+  existingSettings.forEach(item => {
+    existingMap.set(item.setting_key, item);
+  });
+
+  const results = await Promise.all(
+    settings.map(async (item) => {
+      const existing = existingMap.get(item.setting_key);
+
+      if (!existing) {
+        return {
+          setting_key: item.setting_key,
+          status: 'not_found',
+        };
+      }
+
+      await existing.update({
+        is_active: item.is_active,
+      });
+
+      return {
+        setting_key: item.setting_key,
+        status: 'updated',
+      };
+    })
+  );
+
+  return {
+    success: true,
+    message: 'Bulk update completed',
+    data: results,
+  };
+};
+
+exports.deleteSetting = async (store_id, setting_key) => {
+  const setting = await StoreSetting.findOne({
+    where: { store_id, setting_key },
+  });
+
+  if (!setting) {
+    return { success: false, message: 'Setting not found' };
+  }
+
+  await setting.destroy();
+  return { success: true, message: 'Setting deleted' };
 };
 
 exports.getByStore = async (query) => {
