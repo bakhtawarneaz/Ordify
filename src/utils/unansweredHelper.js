@@ -1,8 +1,8 @@
 const Template = require('../models/template.model');
 const WhatsAppMessageResponse = require('../models/whatsappMessageResponse.model');
-const { getOrderDetails } = require('./shopifyHelper');
 const { sendWhatsAppMessage } = require('./whatsappHelper');
 const { logSuccess, logFailed } = require('./loggerHelper');
+const Order = require('../models/order.model');
 
 exports.sendUnansweredWhatsApp = async (store, orderId, channel) => {
   try {
@@ -15,13 +15,15 @@ exports.sendUnansweredWhatsApp = async (store, orderId, channel) => {
       return { success: false, message: `${channel} unanswered template not found` };
     }
 
-    const orderDetails = await getOrderDetails(store, orderId);
-    if (!orderDetails) {
-      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: 'unanswered_whatsapp_sent', message: 'Order details not found from Shopify' });
-      return { success: false, message: 'Order details not found from Shopify' };
+    const order = await Order.findOne({ where: { order_id: orderId, store_id: store.id } });
+    if (!order) {
+      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: 'unanswered_whatsapp_sent', message: 'Order not found in database' });
+      return { success: false, message: 'Order not found' };
     }
+    const orderData = typeof order.order_data === 'string' ? JSON.parse(order.order_data) : order.order_data;
+    const orderNumber = order.order_number;
 
-    const sendResult = await sendWhatsAppMessage(orderDetails, template, store);
+    const sendResult = await sendWhatsAppMessage(orderData, template, store);
     const apiResponse = sendResult?.data?.data;
     const messageId = apiResponse?.result?.[0]?.messageId;
 
@@ -32,15 +34,15 @@ exports.sendUnansweredWhatsApp = async (store, orderId, channel) => {
         phone_number: apiResponse.result[0].number,
         message_id: messageId,
       });
-      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: 'unanswered_whatsapp_sent', message: 'Unanswered WhatsApp sent', details: { phone: apiResponse.result[0].number, messageId } });
+      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderId, order_number: orderNumber, channel: 'whatsapp', action: 'unanswered_whatsapp_sent', message: 'Unanswered WhatsApp sent', details: { phone: apiResponse.result[0].number, messageId, triggered_by: channel } });
       return { success: true, message: 'Unanswered WhatsApp sent' };
     }
 
-    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: 'unanswered_whatsapp_sent', message: 'Unanswered WhatsApp failed - no messageId', details: { error: apiResponse?.errorMessage } });
+    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, order_number: orderNumber, channel: 'whatsapp', action: 'unanswered_whatsapp_sent', message: 'Unanswered WhatsApp failed - no messageId', details: { error: apiResponse?.errorMessage, triggered_by: channel } });
     return { success: false, message: apiResponse?.errorMessage || 'WhatsApp failed' };
 
   } catch (error) {
-    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: 'unanswered_whatsapp_sent', message: `Unexpected error: ${error.message}`, details: { error: error.message } });
+    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel: 'whatsapp', action: 'unanswered_whatsapp_sent', message: `Unexpected error: ${error.message}`, details: { error: error.message, triggered_by: channel } });
     return { success: false, message: error.message };
   }
 };

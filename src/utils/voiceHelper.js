@@ -17,10 +17,22 @@ exports.sendVoiceCall = async (order, store) => {
       headers: { 'Content-Type': 'application/json' },
       timeout: 10000,
     });
+    const data = response.data;
 
-    return response.data;
+    if (data.ErrorCode || data.errorCode) {
+      return {
+        success: false,
+        error: data.ErrorMessage || data.errorMessage || 'Unknown API error',
+        errorCode: data.ErrorCode || data.errorCode,
+      };
+    }
+    return { success: true, response: data };
   } catch (error) {
-    console.error('Error sending voice call:', error?.response?.data || error.message);
-    return { success: false, error: error?.response?.data?.message || error.message };
+    const apiError = error.response?.data || {};
+    return {
+      success: false,
+      error: apiError.ErrorMessage || apiError.message || error.message,
+      errorCode: apiError.ErrorCode || error.response?.status,
+    };
   }
 };

@@ -87,11 +87,24 @@ exports.getMessageStats = async (query) => {
     const channelWhere = { ...baseWhere, channel };
 
     const sent = await ActivityLog.count({
-      where: { ...channelWhere, status: 'success', action: { [Op.like]: '%sent%' } },
+      where: {
+        ...channelWhere,
+        status: 'success',
+        action: { [Op.like]: '%sent%' },
+      },
     });
 
     const failed = await ActivityLog.count({
-      where: { ...channelWhere, status: 'failed', action: { [Op.like]: '%sent%' } },
+      where: {
+        ...channelWhere,
+        status: 'failed',
+        action: { [Op.like]: '%sent%' },
+        order_id: {
+          [Op.notIn]: literal(
+            `(SELECT DISTINCT order_id FROM activity_logs WHERE channel = '${channel}' AND status = 'success' AND details->>'is_retry' = 'true')`
+          ),
+        },
+      },
     });
 
     stats[channel] = { sent, failed, total: sent + failed };
@@ -110,6 +123,7 @@ exports.getMessageComparison = async (query) => {
       where: {
         ...storeWhere,
         channel,
+        status: 'success',
         action: { [Op.like]: '%sent%' },
         createdAt: getCurrentMonthRange(),
       },
@@ -119,6 +133,7 @@ exports.getMessageComparison = async (query) => {
       where: {
         ...storeWhere,
         channel,
+        status: 'success',
         action: { [Op.like]: '%sent%' },
         createdAt: getPreviousMonthRange(),
       },
@@ -286,17 +301,14 @@ exports.getPaymentTypeStats = async (query) => {
 };
 
 exports.getTemplateOverview = async (query) => {
+
   const baseWhere = buildWhere(query, {
     status: 'success',
+    channel: { [Op.ne]: 'system' },
     action: {
-      [Op.in]: [
-        'whatsapp_sent',
-        'unanswered_whatsapp_sent',
-        'order_dispatch_sent',
-        'order_delivered_sent',
-        'order_paid_sent',
-        'order_tracking_sent',
-        'split_order_sent',
+      [Op.and]: [
+        { [Op.like]: '%sent%' },
+        { [Op.notIn]: ['voice_call_sent', 'ordify_sent'] },
       ],
     },
   });
@@ -306,9 +318,15 @@ exports.getTemplateOverview = async (query) => {
     attributes: [
       [fn('COUNT', col('id')), 'count'],
       'channel',
-      'action',
+      [
+        literal(`CASE 
+          WHEN action = 'whatsapp_sent' THEN 'order_confirmation'
+          ELSE action
+        END`),
+        'action',
+      ],
     ],
-    group: ['channel', 'action'],
+    group: ['channel', literal(`CASE WHEN action = 'whatsapp_sent' THEN 'order_confirmation' ELSE action END`)],
     order: [[fn('COUNT', col('id')), 'DESC']],
     raw: true,
   });
@@ -331,8 +349,8 @@ exports.getDashboard = async (query) => {
     data: {
       orders: orderStats.data,
       payment_types: paymentTypeStats.data,
-      messages: messageStats.data,
-      message_comparison: messageComparison.data,
+      notify_stats: messageStats.data,
+      comparison: messageComparison.data,
       tags: tagStats.data,
       retry: retryStats.data,
       stores: activeStores.data,

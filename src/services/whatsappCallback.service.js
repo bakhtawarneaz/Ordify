@@ -66,7 +66,7 @@ exports.handleWhatsAppSend = async (store, orderData) => {
     // Network/token error
     if (!sendResult || sendResult.success === false) {
       const errorMsg = sendResult?.error || 'Failed to send WhatsApp message';
-      await createRetryQueue({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'failed', error_message: errorMsg });
+      await createRetryQueue({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'failed', error_message: errorMsg, original_action: 'whatsapp_sent' });
       await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'whatsapp_sent', message: `WhatsApp failed to ${phoneNumber}`, details: { phone: phoneNumber, error: errorMsg, template_id: template.id } });
       return { success: false, message: errorMsg };
     }
@@ -77,14 +77,14 @@ exports.handleWhatsAppSend = async (store, orderData) => {
 
     if (!messageId) {
       const errorMsg = apiResponse?.errorMessage || 'WhatsApp API error';
-      await createRetryQueue({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'failed', error_message: errorMsg });
+      await createRetryQueue({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'failed', error_message: errorMsg, original_action: 'whatsapp_sent' });
       await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'whatsapp_sent', message: `WhatsApp API error for ${phoneNumber}`, details: { phone: phoneNumber, error: errorMsg, template_id: template.id } });
       return { success: false, message: errorMsg };
     }
 
     // Success
     await WhatsAppMessageResponse.create({ store_id: store.id, order_id: orderData.id, phone_number: apiResponse.result[0].number, message_id: messageId });
-    await createRetryQueue({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'sent' });
+    await createRetryQueue({ store_id: store.id, order_id: orderData.id, template_id: template.id, phone_number: phoneNumber, status: 'sent', original_action: 'whatsapp_sent' });
     await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'whatsapp_sent', message: `WhatsApp sent to ${phoneNumber}`, details: { phone: phoneNumber, messageId, template_id: template.id } });
 
     const reattemptActive = services.isActive('whatsapp_reattempt');

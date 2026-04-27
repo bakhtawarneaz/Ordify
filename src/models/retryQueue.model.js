@@ -53,6 +53,12 @@ const RetryQueue = sequelize.define(
       allowNull: false,
       defaultValue: 3,
     },
+    
+    original_action: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'whatsapp_sent',
+    },
   },
   {
     tableName: 'retry_queues',

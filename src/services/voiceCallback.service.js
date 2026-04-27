@@ -21,12 +21,22 @@ exports.handleVoiceCall = async (orderData, store) => {
     const phoneNumber = extractPhoneFromOrder(orderData);
     const sendResult = await sendVoiceCall(orderData, store);
 
-    if (!sendResult || sendResult.success === false) {
-      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'voice', action: 'voice_call_sent', message: 'Voice call failed', details: { error: sendResult?.error || 'Failed to send voice call' } });
-      return { success: false, message: sendResult?.error || 'Failed to send voice call' };
+    if (!sendResult?.success) {
+      const errorMsg = sendResult?.error || 'Failed to send Voice message';
+      await logFailed({
+        store_id: store.id,
+        store_name: store.store_name,
+        order_id: orderData.id,
+        order_number: orderData.name,
+        channel: 'Voice',
+        action: 'voice_sent',
+        message: 'Voice message failed',
+        details: { error: errorMsg, errorCode: sendResult?.errorCode },
+      });
+      return { success: false, message: errorMsg };
     }
 
-    const cdrId = sendResult?.CdrID || null;
+    const cdrId = sendResult?.response?.CdrID || null;
 
     // Save voice response
     const voiceResponse = await VoiceResponse.create({

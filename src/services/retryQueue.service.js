@@ -9,7 +9,7 @@ const { logSuccess, logFailed } = require('../utils/loggerHelper');
 const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
 
 
-exports.createRetryQueue = async ({ store_id, order_id, template_id, phone_number, status, error_message }) => {
+exports.createRetryQueue = async ({ store_id, order_id, template_id, phone_number, status, error_message, original_action }) => {
   const log = await RetryQueue.create({
     store_id,
     order_id,
@@ -19,6 +19,7 @@ exports.createRetryQueue = async ({ store_id, order_id, template_id, phone_numbe
     error_message: error_message || null,
     retry_count: 0,
     max_retries: 3,
+    original_action: original_action || 'whatsapp_sent',
   });
   return log;
 };
@@ -195,9 +196,9 @@ exports.retrySingle = async (logId) => {
       order_id: log.order_id,
       order_number: order.order_number,
       channel: 'whatsapp',
-      action: 'retry_success',
+      action: log.original_action || 'whatsapp_sent',
       message: `Retry successful for ${log.phone_number}`,
-      details: { messageId, log_id: logId }
+      details: { is_retry: true, messageId, log_id: logId }
     });
 
     return { success: true, message: 'Retry successful', data: log };
