@@ -4,6 +4,7 @@ const CampaignOrder = require('../models/campaignOrder.model');
 const Store = require('../models/store.model');
 const { generateCampaignCode, buildTrackingUrl, generatePublicToken, extractCampaignCode } = require('../utils/campaignHelper');
 const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
+const ExcelJS = require('exceljs');
 
 exports.createCampaign = async (payload) => {
   const { store_id, campaign_name, target_url, start_date, end_date, attribution_window_days, notes } = payload;
@@ -155,7 +156,7 @@ exports.regeneratePublicToken = async (id) => {
 };
 
 exports.getCampaignReport = async (id) => {
-  
+
   const campaign = await Campaign.findByPk(id, {
     include: [{ model: Store, as: 'store', attributes: ['id', 'store_id', 'store_name', 'store_url'] }],
   });
@@ -213,15 +214,28 @@ exports.getCampaignReport = async (id) => {
   };
 };
 
-exports.getStoreDashboard = async (store_id, query) => {
-  const store = await Store.findByPk(store_id);
-  if (!store) {
+exports.getStoreDashboard = async (payload) => {
+  const { store_id, from, to } = payload;
+
+  const where = {};
+  if (store_id) where.store_id = store_id;
+
+  const stores = store_id
+    ? [await Store.findByPk(store_id)]
+    : await Store.findAll({ where: { status: true } });
+
+  if (store_id && !stores[0]) {
     return { success: false, message: 'Store not found' };
   }
 
-  const orderWhere = { store_id: store_id };
-  if (query.from && query.to) {
-    orderWhere.attributed_at = { [Op.between]: [new Date(query.from), new Date(query.to)] };
+  const storeIds = stores.map(s => s.id);
+
+  const orderWhere = {};
+  if (store_id) orderWhere.store_id = store_id;
+  else if (storeIds.length) orderWhere.store_id = { [Op.in]: storeIds };
+
+  if (from && to) {
+    orderWhere.attributed_at = { [Op.between]: [new Date(from), new Date(to)] };
   }
 
   const overallStats = await CampaignOrder.findOne({
@@ -235,12 +249,16 @@ exports.getStoreDashboard = async (store_id, query) => {
     raw: true,
   });
 
-  const dateFilter = query.from && query.to
-    ? { attributed_at: { [Op.between]: [new Date(query.from), new Date(query.to)] } }
+  const campaignWhere = {};
+  if (store_id) campaignWhere.store_id = store_id;
+  else if (storeIds.length) campaignWhere.store_id = { [Op.in]: storeIds };
+
+  const dateFilter = from && to
+    ? { attributed_at: { [Op.between]: [new Date(from), new Date(to)] } }
     : undefined;
 
   const campaigns = await Campaign.findAll({
-    where: { store_id: store_id },
+    where: campaignWhere,
     attributes: [
       'id', 'campaign_name', 'campaign_code', 'start_date', 'end_date', 'status', 'tracking_url',
       [fn('COUNT', col('campaignOrders.id')), 'orders_count'],
@@ -261,12 +279,6 @@ exports.getStoreDashboard = async (store_id, query) => {
   return {
     success: true,
     data: {
-      store: {
-        id: store.id,
-        store_id: store.store_id,
-        store_name: store.store_name,
-        store_url: store.store_url,
-      },
       summary: {
         total_orders: parseInt(overallStats?.total_orders) || 0,
         total_revenue: parseFloat(overallStats?.total_revenue || 0).toFixed(2),
@@ -407,4 +419,90 @@ exports.attributeOrderToCampaign = async (order, store) => {
     console.error('Campaign attribution error:', error.message);
     return { attributed: false, reason: `Error: ${error.message}` };
   }
+};
+
+exports.generatePublicReportExcel = async (code, token) => {
+  const report = await exports.getPublicCampaignReport(code, token);
+
+  if (!report.success) {
+    return report;
+  }
+
+  const { campaign_name, store_name, start_date, end_date, status, summary } = report.data;
+
+  const orders = await CampaignOrder.findAll({
+    where: {
+      campaign_id: (await Campaign.findOne({ where: { campaign_code: code, public_token: token } })).id,
+    },
+    attributes: ['order_number', 'customer_name', 'customer_phone', 'revenue', 'currency', 'attributed_at'],
+    order: [['attributed_at', 'DESC']],
+    raw: true,
+  });
+
+  const workbook = new ExcelJS.Workbook();
+
+  const summarySheet = workbook.addWorksheet('Summary');
+  summarySheet.columns = [
+    { header: 'Field', key: 'field', width: 25 },
+    { header: 'Value', key: 'value', width: 35 },
+  ];
+  summarySheet.addRows([
+    { field: 'Campaign Name', value: campaign_name },
+    { field: 'Store', value: store_name },
+    { field: 'Start Date', value: start_date },
+    { field: 'End Date', value: end_date || 'N/A' },
+    { field: 'Status', value: status },
+    { field: '', value: '' },
+    { field: 'Total Orders', value: summary.total_orders },
+    { field: 'Total Revenue', value: `${summary.currency} ${summary.total_revenue}` },
+    { field: 'Avg Order Value', value: `${summary.currency} ${summary.avg_order_value}` },
+  ]);
+  summarySheet.getRow(1).font = { bold: true };
+  summarySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+  const ordersSheet = workbook.addWorksheet('Orders');
+  ordersSheet.columns = [
+    { header: 'Order #', key: 'order_number', width: 15 },
+    { header: 'Customer Name', key: 'customer_name', width: 25 },
+    { header: 'Phone', key: 'customer_phone', width: 20 },
+    { header: 'Revenue', key: 'revenue', width: 15 },
+    { header: 'Currency', key: 'currency', width: 10 },
+    { header: 'Date', key: 'attributed_at', width: 20 },
+  ];
+  orders.forEach(order => {
+    ordersSheet.addRow({
+      order_number: order.order_number,
+      customer_name: order.customer_name,
+      customer_phone: order.customer_phone,
+      revenue: parseFloat(order.revenue),
+      currency: order.currency,
+      attributed_at: order.attributed_at,
+    });
+  });
+  ordersSheet.getRow(1).font = { bold: true };
+  ordersSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+  const dailySheet = workbook.addWorksheet('Daily Breakdown');
+  dailySheet.columns = [
+    { header: 'Date', key: 'date', width: 15 },
+    { header: 'Orders', key: 'orders', width: 10 },
+    { header: 'Revenue', key: 'revenue', width: 15 },
+  ];
+  report.data.daily_breakdown.forEach(day => {
+    dailySheet.addRow({
+      date: day.date,
+      orders: parseInt(day.orders),
+      revenue: parseFloat(day.revenue),
+    });
+  });
+  dailySheet.getRow(1).font = { bold: true };
+  dailySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  return {
+    success: true,
+    buffer,
+    filename: `campaign_report_${code}.xlsx`,
+  };
 };

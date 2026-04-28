@@ -1,5 +1,6 @@
 const Store = require('../models/store.model');
 const { getPagination, getPaginationResponse } = require('../utils/paginationHelper');
+const StoreSetting = require('../models/storeSetting.model');
 
 exports.createStore = async (payload) => {
   const { store_id, store_name } = payload;
@@ -79,6 +80,14 @@ exports.getAllStores = async (query = {}) => {
     order: [['id', 'ASC']],
     limit: pageSize,
     offset,
+    include: [
+      {
+        model: StoreSetting,
+        attributes: ['id', 'setting_key', 'is_active'],
+        required: false,
+      },
+    ],
+    distinct: true,
   });
 
   return {

@@ -10,11 +10,10 @@ async function campaignRoutes(fastify) {
   fastify.delete('/delete/:id', { preHandler: [authMiddleware, canDelete('campaign')] }, campaignController.delete);
   fastify.post('/regenerate-token/:id', { preHandler: [authMiddleware, canEdit('campaign')] }, campaignController.regenerateToken);
   fastify.get('/report/:id', { preHandler: [authMiddleware, canView('campaign')] }, campaignController.report);
-  fastify.get('/store-dashboard/:store_id', { preHandler: [authMiddleware, canView('campaign')] }, campaignController.storeDashboard);
+  fastify.post('/store-dashboard', { preHandler: [authMiddleware, canView('campaign')] }, campaignController.storeDashboard);
   fastify.post('/status', { preHandler: [authMiddleware, canEdit('campaign')] }, campaignController.toggleStatus);
-
-  // Public route — no auth, no permission
-  fastify.get('/public/:code', campaignController.publicReport);
+  fastify.get('/public/:code', { preHandler: [authMiddleware, canView('campaign')] }, campaignController.publicReport);
+  fastify.get('/public/download/:code', { preHandler: [authMiddleware, canView('campaign')] }, campaignController.publicReportExcel);
 }
 
 module.exports = campaignRoutes;

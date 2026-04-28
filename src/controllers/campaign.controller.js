@@ -74,7 +74,7 @@ exports.report = async (req, reply) => {
 
 exports.storeDashboard = async (req, reply) => {
   try {
-    const res = await campaignService.getStoreDashboard(req.params.store_id, req.query);
+    const res = await campaignService.getStoreDashboard(req.body);
     return reply.code(res.success ? 200 : 404).send(res);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
@@ -85,6 +85,21 @@ exports.publicReport = async (req, reply) => {
   try {
     const res = await campaignService.getPublicCampaignReport(req.params.code, req.query.token);
     return reply.code(res.success ? 200 : 404).send(res);
+  } catch (err) {
+    return reply.code(500).send({ success: false, message: err.message });
+  }
+};
+
+exports.publicReportExcel = async (req, reply) => {
+  try {
+    const res = await campaignService.generatePublicReportExcel(req.params.code, req.query.token);
+    if (!res.success) {
+      return reply.code(404).send(res);
+    }
+    reply
+      .header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      .header('Content-Disposition', `attachment; filename=${res.filename}`)
+      .send(res.buffer);
   } catch (err) {
     return reply.code(500).send({ success: false, message: err.message });
   }
