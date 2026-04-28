@@ -10,6 +10,7 @@ const { extractPhoneFromOrder } = require('../utils/phoneHelper');
 const { notificationQueue } = require('../config/queue');
 const { handleFeedbackOnFulfilled } = require('../services/feedback.service');
 const { handleCheckoutWebhook, handleCartRecovery } = require('../services/abandonedCart.service');
+const { attributeOrderToCampaign } = require('../services/campaign.service');
 
 exports.handleShopifyWebhook = async (orderData, topic) => {
   try {
@@ -82,6 +83,30 @@ const handleOrderCreate = async (store, orderData) => {
     await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'system', action: 'order_saved', message: 'Order saved successfully' });
 
     await handleCartRecovery(store, orderData);
+
+    const attributionResult = await attributeOrderToCampaign(orderData, store);
+    if (attributionResult.attributed) {
+      await logSuccess({
+        store_id: store.id,
+        store_name: store.store_name,
+        order_id: orderData.id,
+        order_number: orderData.name,
+        channel: 'system',
+        action: 'campaign_attributed',
+        message: `Campaign attributed: ${attributionResult.campaign_name}`,
+        details: { campaign_id: attributionResult.campaign_id, revenue: attributionResult.revenue },
+      });
+    } else {
+      await logFailed({
+        store_id: store.id,
+        store_name: store.store_name,
+        order_id: orderData.id,
+        order_number: orderData.name,
+        channel: 'system',
+        action: 'campaign_attribution',
+        message: `Campaign not attributed: ${attributionResult.reason}`,
+      });
+    }
 
     const queued = [];
 

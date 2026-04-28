@@ -11,6 +11,8 @@ const AbandonedCartTemplate = require('./abandonedCartTemplate.model');
 const AbandonedCartStoreConfig = require('./abandonedCartStoreConfig.model');
 const AbandonedCartReminder = require('./abandonedCartReminder.model');
 const AbandonedCartMessageLog = require('./abandonedCartMessageLog.model');
+const Campaign = require('./campaign.model');
+const CampaignOrder = require('./campaignOrder.model');
 
 // ============================================
 // Store ↔ StoreSetting
@@ -86,6 +88,12 @@ AbandonedCheckout.hasMany(AbandonedCartMessageLog, { foreignKey: 'abandoned_chec
 AbandonedCartReminder.hasMany(AbandonedCartMessageLog, { foreignKey: 'reminder_id' });
 AbandonedCartTemplate.hasMany(AbandonedCartMessageLog, { foreignKey: 'template_id' });
 
+Campaign.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
+Campaign.hasMany(CampaignOrder, { foreignKey: 'campaign_id', as: 'campaignOrders' });
+
+CampaignOrder.belongsTo(Campaign, { foreignKey: 'campaign_id', as: 'campaign' });
+CampaignOrder.belongsTo(Store, { foreignKey: 'store_id', as: 'store' });
+
 module.exports = {
   Store,
   StoreSetting,
@@ -100,4 +108,6 @@ module.exports = {
   AbandonedCartStoreConfig,
   AbandonedCartReminder,
   AbandonedCartMessageLog,
+  Campaign,
+  CampaignOrder
 };

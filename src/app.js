@@ -159,6 +159,7 @@ fastify.register(require('./routes/feedback.routes'), { prefix: '/api/feedback' 
 fastify.register(require('./routes/order.routes'), { prefix: '/api/order' });
 fastify.register(require('./routes/abandonedCart.routes'), { prefix: '/api/abandoned-cart' });
 fastify.register(require('./routes/customerAnalytics.routes'), { prefix: '/api/customer-analytics' });
+fastify.register(require('./routes/campaign.routes'), { prefix: '/api/campaign' });
 
 const connectDB = async () => {
   try {
