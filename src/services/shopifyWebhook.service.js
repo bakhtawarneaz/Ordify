@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const Store = require('../models/store.model');
 const Order = require('../models/order.model');
 const Template = require('../models/template.model');
+const Campaign = require('../models/campaign.model');
 const { sendWhatsAppMessage } = require('../utils/whatsappHelper');
 const { createRetryQueue } = require('../services/retryQueue.service');
 const { logSuccess, logFailed } = require('../utils/loggerHelper');
@@ -84,34 +85,40 @@ const handleOrderCreate = async (store, orderData) => {
 
     await handleCartRecovery(store, orderData);
 
-    const attributionResult = await attributeOrderToCampaign(orderData, store);
-    if (attributionResult.attributed) {
-      await logSuccess({
-        store_id: store.id,
-        store_name: store.store_name,
-        order_id: orderData.id,
-        order_number: orderData.name,
-        channel: 'system',
-        action: 'campaign_attributed',
-        message: `Campaign attributed: ${attributionResult.campaign_name}`,
-        details: { campaign_id: attributionResult.campaign_id, revenue: attributionResult.revenue },
-      });
-    } else {
-      await logFailed({
-        store_id: store.id,
-        store_name: store.store_name,
-        order_id: orderData.id,
-        order_number: orderData.name,
-        channel: 'system',
-        action: 'campaign_attribution',
-        message: `Campaign not attributed: ${attributionResult.reason}`,
-      });
-    }
-
     const queued = [];
 
     const whatsappActive = await isServiceActive(store.id, 'whatsapp_only');
     if (whatsappActive) {
+
+      const activeCampaign = await Campaign.findOne({
+        where: { store_id: store.id, status: 'active' },
+      });
+
+      if (activeCampaign) {
+        const attributionResult = await attributeOrderToCampaign(orderData, store);
+        if (attributionResult.attributed) {
+          await logSuccess({
+            store_id: store.id,
+            store_name: store.store_name,
+            order_id: orderData.id,
+            order_number: orderData.name,
+            channel: 'whatsapp',
+            action: 'campaign_attributed',
+            message: `Campaign attributed: ${attributionResult.campaign_name}`,
+            details: { campaign_id: attributionResult.campaign_id, revenue: attributionResult.revenue },
+          });
+        } else {
+          await logFailed({
+            store_id: store.id,
+            store_name: store.store_name,
+            order_id: orderData.id,
+            order_number: orderData.name,
+            channel: 'whatsapp',
+            action: 'campaign_attribution',
+            message: `Campaign not attributed: ${attributionResult.reason}`,
+          });
+        }
+      }
       await notificationQueue.add('whatsapp', {
         type: 'whatsapp',
         store: {

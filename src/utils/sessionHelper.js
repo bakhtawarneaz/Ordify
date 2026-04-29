@@ -17,21 +17,22 @@ exports.sendSessionWhatsApp = async (store, orderId, meaning, channel) => {
 
     const action = meaning === 'confirm' ? 'session_confirm' : 'session_cancel';
 
+    const order = await Order.findOne({
+      where: { order_id: orderId, store_id: store.id },
+    });
+    const orderNumber = order?.order_number || null;
+
     const template = await Template.findOne({
       where: { store_id: store.id, template_type: 'whatsapp', action },
     });
 
     if (!template) {
-      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: `${action}_sent`, message: `Session template not found: ${action}` });
+      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, order_number: orderNumber, channel, action: `${action}_sent`, message: `Session template not found: ${action}` });
       return { success: false, message: `Session template not found: ${action}` };
     }
 
-    const order = await Order.findOne({
-      where: { order_id: orderId, store_id: store.id },
-    });
-
     if (!order || !order.order_data) {
-      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: `${action}_sent`, message: 'Order data not found for session template' });
+      await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, order_number: orderNumber, channel, action: `${action}_sent`, message: 'Order data not found for session template' });
       return { success: false, message: 'Order data not found' };
     }
 
@@ -40,15 +41,15 @@ exports.sendSessionWhatsApp = async (store, orderId, meaning, channel) => {
     const messageId = apiResponse?.result?.[0]?.messageId;
 
     if (messageId) {
-      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: `${action}_sent`, message: `Session ${meaning} WhatsApp sent`, details: { messageId, phone: apiResponse.result[0].number } });
+      await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderId, order_number: orderNumber, channel, action: `${action}_sent`, message: `Session ${meaning} WhatsApp sent`, details: { messageId, phone: apiResponse.result[0].number } });
       return { success: true, message: `Session ${meaning} WhatsApp sent`, messageId };
     }
 
     const errorMsg = apiResponse?.errorMessage || sendResult?.error || 'WhatsApp API error';
-    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: `${action}_sent`, message: `Session WhatsApp failed: ${errorMsg}` });
+    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, order_number: orderNumber, channel, action: `${action}_sent`, message: `Session WhatsApp failed: ${errorMsg}` });
     return { success: false, message: errorMsg };
   } catch (error) {
-    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, channel, action: 'session_template_sent', message: `Unexpected error: ${error.message}` });
+    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: orderId, order_number: orderNumber, channel, action: 'session_template_sent', message: `Unexpected error: ${error.message}` });
     return { success: false, message: error.message };
   }
 };

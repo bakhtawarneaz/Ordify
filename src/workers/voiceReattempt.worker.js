@@ -35,7 +35,7 @@ const worker = new Worker('voice-reattempt', async (job) => {
     throw new Error(`Store not found: ${voiceResponse.store_id}`);
   }
 
-  const { hasOurTag } = await hasExistingTag(store, voiceResponse.order_id);
+  const { hasOurTag } = await hasExistingTag(store, voiceResponse.order_id); 
 
   if (hasOurTag) {
     await voiceResponse.update({ action_taken: true });
@@ -63,20 +63,28 @@ const worker = new Worker('voice-reattempt', async (job) => {
 
   const sendResult = await sendVoiceCall(order.order_data, store);
 
-  if (!sendResult || sendResult.success === false) {
+  if (!sendResult?.success) {
     const errorMsg = sendResult?.error || 'Voice call failed';
-    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: voiceResponse.order_id, channel: 'voice', action: 'voice_reattempt_sent', message: `Voice reattempt failed: ${errorMsg}`, details: { phone: voiceResponse.phone_number, error: errorMsg, attempt: voiceResponse.reattempt_count + 1 } });
+    await logFailed({ 
+      store_id: store.id, 
+      store_name: store.store_name, 
+      order_id: voiceResponse.order_id, 
+      channel: 'voice', 
+      action: 'voice_reattempt_sent', 
+      message: `Voice reattempt failed: ${errorMsg}`, 
+      details: { phone: voiceResponse.phone_number, error: errorMsg, attempt: voiceResponse.reattempt_count + 1 } 
+    });
     throw new Error(errorMsg);
   }
-
-  const newCdrId = sendResult?.CdrID || null;
+  
+  const newCdrId = sendResult?.response?.CdrID || null;
 
   await voiceResponse.update({
     reattempt_count: voiceResponse.reattempt_count + 1,
     cdr_id: newCdrId,
   });
 
-  await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: voiceResponse.order_id, channel: 'voice', action: 'voice_reattempt_sent', message: `Voice reattempt ${voiceResponse.reattempt_count} sent`, details: { phone: voiceResponse.phone_number, cdrId: newCdrId, attempt: voiceResponse.reattempt_count } });
+  await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: voiceResponse.order_id, order_number: order?.order_number, channel: 'voice', action: 'voice_reattempt_sent', message: `Voice reattempt ${voiceResponse.reattempt_count} sent`, details: { phone: voiceResponse.phone_number, cdrId: newCdrId, attempt: voiceResponse.reattempt_count } });
 
   // Schedule next reattempt if needed
   if (voiceResponse.reattempt_count < maxAttempts) {

@@ -60,9 +60,9 @@ exports.handleVoiceCall = async (orderData, store) => {
       }, {
         delay: delayMs,
         attempts: 2,
-        backoff: { type: 'exponential', delay: 30000 },
-        removeOnComplete: 100,
-        removeOnFail: 500,
+        backoff: { type: 'exponential', delay: 60000 },
+        removeOnComplete: 86400,
+        removeOnFail: 172800,
       });
 
       await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'voice', action: 'voice_reattempt_scheduled', message: `Voice reattempt scheduled after ${delayMinutes} minutes` });

@@ -82,7 +82,7 @@ const worker = new Worker('reattempt', async (job) => {
   }
 
   if (!template) {
-    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, channel: 'whatsapp', action: 'reattempt_sent', message: 'Reattempt template not found' });
+    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, order_number: order?.order_number, channel: 'whatsapp', action: 'reattempt_sent', message: 'Reattempt template not found' });
     throw new Error('Reattempt template not found');
   }
 
@@ -93,16 +93,16 @@ const worker = new Worker('reattempt', async (job) => {
 
   if (!newMessageId) {
     const errorMsg = apiResponse?.errorMessage || sendResult?.error || 'WhatsApp API error';
-    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, channel: 'whatsapp', action: 'reattempt_sent', message: `Reattempt failed: ${errorMsg}`, details: { phone: messageResponse.phone_number, error: errorMsg, attempt: messageResponse.reattempt_count + 1 } });
+    await logFailed({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, order_number: order?.order_number, channel: 'whatsapp', action: 'reattempt_sent', message: `Reattempt failed: ${errorMsg}`, details: { phone: messageResponse.phone_number, error: errorMsg, attempt: messageResponse.reattempt_count + 1 } });
     throw new Error(errorMsg);
-  }
+  } 
 
   await messageResponse.update({
     reattempt_count: messageResponse.reattempt_count + 1,
     message_id: newMessageId,
   });
 
-  await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, channel: 'whatsapp', action: 'reattempt_sent', message: `Reattempt ${messageResponse.reattempt_count} sent`, details: { phone: messageResponse.phone_number, messageId: newMessageId, attempt: messageResponse.reattempt_count } });
+  await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: messageResponse.order_id, order_number: order?.order_number, channel: 'whatsapp', action: 'reattempt_sent', message: `Reattempt ${messageResponse.reattempt_count} sent`, details: { phone: messageResponse.phone_number, messageId: newMessageId, attempt: messageResponse.reattempt_count } });
 
   if (messageResponse.reattempt_count < maxAttempts) {
     const { reattemptQueue } = require('../config/queue');

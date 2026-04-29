@@ -103,9 +103,9 @@ exports.handleWhatsAppSend = async (store, orderData) => {
         }, {
           delay: delayMs,
           attempts: 2,
-          backoff: { type: 'exponential', delay: 30000 },
-          removeOnComplete: 100,
-          removeOnFail: 500,
+          backoff: { type: 'exponential', delay: 60000 },
+          removeOnComplete: 86400,
+          removeOnFail: 172800,
         });
 
         await logSuccess({ store_id: store.id, store_name: store.store_name, order_id: orderData.id, order_number: orderData.name, channel: 'whatsapp', action: 'reattempt_scheduled', message: `Reattempt scheduled after ${delayMinutes} minutes` });

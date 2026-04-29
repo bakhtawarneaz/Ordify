@@ -56,14 +56,14 @@ const getCurrentMonthRange = () => {
 
 
 exports.getOrderStats = async (query) => {
-  const storeWhere = query.store_id ? { store_id: query.store_id } : {};
+  const baseWhere = buildWhere(query);
 
   if (query.from && query.to) {
-    const total = await Order.count({
-      where: { ...storeWhere, createdAt: { [Op.between]: [new Date(query.from), new Date(query.to)] } },
-    });
+    const total = await Order.count({ where: baseWhere });
     return { success: true, data: { today: 0, week: 0, month: 0, total } };
   }
+
+  const storeWhere = query.store_id ? { store_id: query.store_id } : {};
 
   const today = await Order.count({ where: { ...storeWhere, createdAt: getDateRange('today') } });
   const week = await Order.count({ where: { ...storeWhere, createdAt: getDateRange('week') } });
@@ -101,7 +101,7 @@ exports.getMessageStats = async (query) => {
         action: { [Op.like]: '%sent%' },
         order_id: {
           [Op.notIn]: literal(
-            `(SELECT DISTINCT order_id FROM activity_logs WHERE channel = '${channel}' AND status = 'success' AND details->>'is_retry' = 'true')`
+            `(SELECT DISTINCT order_id FROM activity_logs WHERE channel = '${channel}' AND status = 'success' AND action LIKE '%sent%')`
           ),
         },
       },
@@ -270,13 +270,10 @@ exports.getActiveStores = async () => {
 
 
 exports.getPaymentTypeStats = async (query) => {
-  const storeWhere = query.store_id ? { store_id: query.store_id } : {};
-  const dateWhere = query.from && query.to
-    ? { createdAt: { [Op.between]: [new Date(query.from), new Date(query.to)] } }
-    : {};
+  const baseWhere = buildWhere(query);
 
   const allOrders = await Order.findAll({
-    where: { ...storeWhere, ...dateWhere },
+    where: baseWhere,
     attributes: ['order_data'],
     raw: true,
   });
@@ -308,7 +305,7 @@ exports.getTemplateOverview = async (query) => {
     action: {
       [Op.and]: [
         { [Op.like]: '%sent%' },
-        { [Op.notIn]: ['voice_call_sent', 'ordify_sent'] },
+        { [Op.notIn]: ['voice_call_sent', 'ordify_sent', 'voice_reattempt_sent'] },
       ],
     },
   });
